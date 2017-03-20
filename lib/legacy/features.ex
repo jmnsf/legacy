@@ -21,12 +21,39 @@ defmodule Legacy.Features do
     Redix.command! redis, ~w(HMSET #{feature_key(name)} #{params})
   end
 
+  @doc """
+  Returns whether a feature with the given `name` already exists.
+  """
+  def exists(name) do
+    {:ok, redis} = redis_connection()
+    Redix.command!(redis, ~w(EXISTS #{feature_key(name)})) == 1
+  end
+
+  @doc """
+  Returns the current config for a feature with the given `name` or nil if it
+  doesn't exist.
+  """
+  def show(name) do
+    {:ok, redis} = redis_connection()
+
+    case Redix.command! redis, ~w(HGETALL #{feature_key(name)}) do
+      [] -> nil
+      values ->
+        Stream.chunk(values, 2)
+        |> Enum.reduce(%{ }, fn ([key, value], map) ->
+          atom_key = String.to_atom(key)
+          Map.put(map, atom_key, fix_value_type(atom_key, value))
+        end)
+    end
+  end
+
   defp init_defaults(_name, []), do: nil
   defp init_defaults(name, defaults) do
     {:ok, redis} = redis_connection()
     redis_key = feature_key name
 
     Enum.map defaults, fn({ key, value }) ->
+      # TODO: optimize this into pipeline
       Redix.command! redis, ~w(HSETNX #{redis_key} #{key} #{value})
     end
   end
@@ -42,5 +69,19 @@ defmodule Legacy.Features do
 
   defp feature_key(name) do
     "features:#{name}"
+  end
+
+  defp fix_value_type(:expire_period, value) do
+    elem(Integer.parse(value), 0)
+  end
+  defp fix_value_type(:created_at, value), do: fix_date_value(value)
+  defp fix_value_type(:updated_at, value), do: fix_date_value(value)
+  defp fix_value_type(_, value), do: value
+
+  defp fix_date_value(date_string) do
+    case DateTime.from_iso8601(date_string) do
+      {:ok, date, _offset} -> date
+      {:error, err} -> raise "Bad date format. Got #{date_string}, error: #{err}"
+    end
   end
 end
