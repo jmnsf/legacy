@@ -28,3 +28,12 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
+
+config :maru, Legacy.Api,
+  http: [port: 80]
+
+config :logger,
+  backends: [:console],
+  compile_time_purge_level: :info
+
+import_config "#{Mix.env}.exs"
