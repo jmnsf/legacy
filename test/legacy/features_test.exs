@@ -1,7 +1,8 @@
 defmodule Legacy.FeaturesTest do
+  import Legacy.ExtraAsserts
   use Legacy.RedisCase, async: true
 
-  describe "Legacy.FeaturesTest.init/1" do
+  describe "Legacy.Features.init/1" do
     test "sets the defaults for a new feature", %{redis: redis} do
       Legacy.Features.init "ft-feat-1"
 
@@ -33,7 +34,7 @@ defmodule Legacy.FeaturesTest do
     end
   end
 
-  describe "Legacy.Calls.init/2" do
+  describe "Legacy.Features.init/2" do
     test "sets the defaults updated with given values for a new feature", %{redis: redis} do
       Legacy.Features.init "ft-feat-3", description: "something-else"
 
@@ -52,7 +53,7 @@ defmodule Legacy.FeaturesTest do
     end
   end
 
-  describe "Legacy.FeaturesTest.update/2" do
+  describe "Legacy.Features.update/2" do
     test "sets the given values on a new feature", %{redis: redis} do
       Legacy.Features.update "ft-feat-5", description: "something-else", expire_period: "12"
 
@@ -67,6 +68,33 @@ defmodule Legacy.FeaturesTest do
 
       assert Redix.command!(redis, ~w(HMGET features:ft-feat-6 name description expire_period)) ==
         ["else", "something-else", "12"]
+    end
+  end
+
+  describe "Legacy.Features.exists/1" do
+    test "returns true if a feature exists" do
+      Legacy.Features.init "ft-feat-7"
+      assert Legacy.Features.exists("ft-feat-7") == true
+    end
+
+    test "returns false if a feature doesn't exist" do
+      assert Legacy.Features.exists("ft-feat-8") == false
+    end
+  end
+
+  describe "Legacy.Features.show/1" do
+    test "returns nil when the feature does not exist" do
+      assert Legacy.Features.show("ft-test-8") == nil
+    end
+
+    test "returns an initialized Feature record with the feature's attributes" do
+      Legacy.Features.init "ft-feat-9"
+      feature = Legacy.Features.show("ft-feat-9")
+
+      assert feature[:description] == "ft-feat-9"
+      assert feature[:expire_period] == 30
+      assert_date_approx feature[:created_at], DateTime.utc_now
+      assert_date_approx feature[:updated_at], DateTime.utc_now
     end
   end
 end
