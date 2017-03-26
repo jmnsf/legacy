@@ -1,4 +1,9 @@
 defmodule Legacy.Features do
+  @moduledoc """
+  Provides a CRUD interface for Features. These are identified by a unique name
+  and store such information as their expiry periods and create/update dates.
+  """
+
   @doc """
   Initialize a feature structure if it doesn't exist, update it with `opts` if
   it does exist. `opts` will also be used to override defaults when initializing.
