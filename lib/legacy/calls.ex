@@ -72,6 +72,16 @@ defmodule Legacy.Calls do
     Redix.command! redis, ~w(INCRBY #{key}:new #{count})
   end
 
+  def get(feature_name, timestamp) do
+    {:ok, redis} = redis_connection()
+    key = call_key feature_name, timestamp, @day_granularity
+
+    {
+      int_or_0(Redix.command! redis, ~w(GET #{key}:new)),
+      int_or_0(Redix.command! redis, ~w(GET #{key}:old))
+    }
+  end
+
   defp redis_connection do
     Redix.start_link "redis://localhost/15"
   end
@@ -84,4 +94,7 @@ defmodule Legacy.Calls do
   defp base_timestamp(granularity, timestamp) do
     div(timestamp, granularity) * granularity
   end
+
+  defp int_or_0(nil), do: 0
+  defp int_or_0(val), do: String.to_integer val
 end
