@@ -20,7 +20,7 @@ defmodule Legacy.Features do
   def update(_name, []), do: nil
   def update(name, opts) do
     {:ok, redis} = redis_connection()
-    params = Enum.map(opts, fn({ key, value }) -> "#{key} #{value}" end)
+    params = Enum.map(opts, fn { key, value } -> "#{key} #{value}" end)
       |> Enum.join(" ")
 
     Redix.command! redis, ~w(HMSET #{feature_key(name)} #{params})
@@ -57,7 +57,7 @@ defmodule Legacy.Features do
     {:ok, redis} = redis_connection()
     redis_key = feature_key name
 
-    Enum.map defaults, fn({ key, value }) ->
+    Enum.map defaults, fn { key, value } ->
       # TODO: optimize this into pipeline
       Redix.command! redis, ~w(HSETNX #{redis_key} #{key} #{value})
     end
