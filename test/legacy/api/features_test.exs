@@ -29,14 +29,14 @@ defmodule Legacy.Api.FeaturesTest do
     test "errors out if a feature exists with the given name" do
       Legacy.Features.init "ft-api-feat-2"
 
-      res = post_body "/", %{name: "ft-api-feat-2"}
+      res = post_body "/", %{feature_name: "ft-api-feat-2"}
 
       assert res.status == 409
       assert json_response(res) == %{"errors" => ["A Feature with this name already exists."]}
     end
 
     test "creates a new feature with the given name & settings" do
-      post_body "/", %{name: 'ft-api-feat-3', expire_period: 45}
+      post_body "/", %{feature_name: 'ft-api-feat-3', expire_period: 45}
 
       feature = Legacy.Features.show 'ft-api-feat-3'
       assert feature
@@ -47,7 +47,7 @@ defmodule Legacy.Api.FeaturesTest do
     end
 
     test "returns the new feature as JSON" do
-      res = post_body "/", %{name: "ft-api-feat-4"}
+      res = post_body "/", %{feature_name: "ft-api-feat-4"}
       json = json_response res
 
       assert res.status == 201

@@ -1,11 +1,7 @@
 defmodule Legacy.Api.Features do
   use Maru.Router
 
-  helpers do
-    params :feature_name do
-      requires :name, type: String, regexp: ~r/^[\w_-]+$/
-    end
-  end
+  helpers Legacy.Api.SharedParams
 
   params do
     use :feature_name
@@ -15,30 +11,30 @@ defmodule Legacy.Api.Features do
 
   desc "creates a new feature"
   post do
-    if Legacy.Features.exists(params[:name]) do
-      conn = put_status conn, 409
-      json(conn, %{ errors: ["A Feature with this name already exists."] })
+    if Legacy.Features.exists(params[:feature_name]) do
+      conn
+      |> put_status(409)
+      |> json(%{ errors: ["A Feature with this name already exists."] })
     else
       Legacy.Features.init(
-        params[:name],
-        Map.to_list(Map.delete(params, :name))
+        params[:feature_name],
+        Map.to_list(Map.delete(params, :feature_name))
       )
 
       conn
       |> put_status(201)
-      |> json(%{data: Legacy.Features.show params[:name]})
+      |> json(%{data: Legacy.Features.show params[:feature_name]})
     end
   end
 
-  route_param :name do
-    desc "gets the feature with the given name"
-
+  route_param :feature_name do
     params do
       use :feature_name
     end
 
+    desc "gets the feature with the given name"
     get do
-      feature = Legacy.Features.show params[:name]
+      feature = Legacy.Features.show params[:feature_name]
 
       case feature do
         nil -> put_status conn, 404
@@ -46,6 +42,6 @@ defmodule Legacy.Api.Features do
       end
     end
 
-    # namespace :calls, do: mount Legacy.Api.Calls
+    namespace :calls, do: mount Legacy.Api.Calls
   end
 end
