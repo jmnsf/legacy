@@ -110,8 +110,16 @@ defmodule Legacy.Calls do
   end
 
   @doc """
-  Apply an aggregation to all of a feature's calls during a time range, divided
-  by `granularity` buckets.
+  Aggregate a feature's new & old calls from `from` up to `periods` in the past,
+  where each aggregated period is sized according to `period_size` and
+  `period_granularity`.
+
+  Supports :sum and :avg as `aggregation`, adding by default.
+
+  For example, a call to aggregate the past month and a half's calls in
+  2-week buckets, summing all values in-between would be:
+
+  `aggregate("fname", periods: 3, period_size: 2, period_granularity: :week)`
   """
   @spec aggregate(
     String.t,
@@ -122,8 +130,9 @@ defmodule Legacy.Calls do
       from: non_neg_integer,
       aggregation: atom
     ]
-  ) :: any
+  ) :: %{ts: [non_neg_integer], new: [non_neg_integer], old: [non_neg_integer]}
   def aggregate(feature_name, opts \\ []) do
+    # TODO: limit range requested
     aggregation = Keyword.get opts, :aggregation, :sum
     from = Keyword.get opts, :from, DateTime.to_unix(DateTime.utc_now)
     periods = Keyword.get opts, :periods, 1
@@ -144,6 +153,47 @@ defmodule Legacy.Calls do
     |> bucketize_calls(bucket_size)
     |> aggregate_buckets(aggregation)
     |> Map.put(:ts, aggregate_ts)
+  end
+
+  @doc """
+  Performs an aggregation using `aggregate` according to the given bucket opts.
+  @see `aggregate` for more param info.
+
+  Applies the given `analysis` to the aggregated values. Supports :rate or
+  :diff, returning the rate of new calls to total or the difference between
+  old and new calls, respectively.
+  """
+  @spec analyse(
+    String.t,
+    [
+      periods: non_neg_integer,
+      period_size: non_neg_integer,
+      period_granularity: atom,
+      from: non_neg_integer,
+      analysis: atom
+    ]
+  ) :: %{ts: [non_neg_integer], analysis: [float | integer]}
+  def analyse(feature_name, opts \\ []) do
+    # TODO: limit range requested
+    # TODO: stop double-reverse (in aggregation and here)
+    analysis = Keyword.get opts, :analysis, :rate
+
+    aggregated = aggregate(feature_name, Keyword.drop(opts, [:analysis]))
+
+    analysed = analyse(aggregated[:new], aggregated[:old], analysis)
+
+    Map.put(aggregated, :analysis, analysed)
+    |> Map.drop([:new, :old])
+  end
+
+  defp analyse(new, old, analysis) do
+    analyser = case analysis do
+      :rate -> fn {a, b} -> a / (a + b) end
+      :diff -> fn {a, b} -> a - b end
+    end
+
+    Stream.zip(new, old)
+    |> Enum.map(&analyser.(&1))
   end
 
   defp bucketize_calls(calls, bucket_size) do
