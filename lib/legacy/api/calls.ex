@@ -27,4 +27,25 @@ defmodule Legacy.Api.Calls do
 
     conn |> json(%{data: response})
   end
+
+  namespace :aggregate do
+    params do
+      use :feature_name
+      optional :from, type: Timestamp
+      optional :aggregation, type: Atom, values: [:sum, :avg]
+      optional :periods, type: Integer
+      optional :period_size, type: Integer
+      optional :period_granularity, type: Atom, values: [:day, :week, :month, :year]
+    end
+
+    desc "aggregates and returns feature calls"
+    get do
+      response = Legacy.Calls.aggregate(
+        params[:feature_name],
+        params |> Map.drop([:feature_name]) |> Map.to_list()
+      )
+
+      conn |> json(%{data: response})
+    end
+  end
 end
