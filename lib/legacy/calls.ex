@@ -117,7 +117,8 @@ defmodule Legacy.Calls do
     String.t,
     [
       periods: non_neg_integer,
-      period_size: {non_neg_integer, atom},
+      period_size: non_neg_integer,
+      period_granularity: atom,
       from: non_neg_integer,
       aggregation: atom
     ]
@@ -126,16 +127,17 @@ defmodule Legacy.Calls do
     aggregation = Keyword.get opts, :aggregation, :sum
     from = Keyword.get opts, :from, DateTime.to_unix(DateTime.utc_now)
     periods = Keyword.get opts, :periods, 1
-    {size, granularity} = Keyword.get opts, :period_size, {1, :year}
+    period_size = Keyword.get opts, :period_size, 1
+    period_granularity = Keyword.get opts, :period_granularity, :year
 
-    aggregate_ts = GranularTime.periodic_ts from, periods, {size, granularity}
+    aggregate_ts = GranularTime.periodic_ts from, periods, {period_size, period_granularity}
     calls_timestamps = GranularTime.periodic_ts(
       from,
-      GranularTime.granularity_in_days(granularity) * size * periods,
+      GranularTime.granularity_in_days(period_granularity) * period_size * periods,
       :day
     )
 
-    seconds_period_size = size * GranularTime.int_granularity(granularity)
+    seconds_period_size = period_size * GranularTime.int_granularity(period_granularity)
     bucket_size = div seconds_period_size, GranularTime.int_granularity(:day)
 
     get_multiple_calls(feature_name, calls_timestamps)

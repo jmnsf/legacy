@@ -188,15 +188,15 @@ defmodule Legacy.CallsTest do
     end
 
     test "returns one period of the given period_size, summed", %{now: now} do
-      assert Legacy.Calls.aggregate("call-16", from: now, period_size: {2, :day}) == %{
+      assert Legacy.Calls.aggregate("call-16", from: now, period_size: 2, period_granularity: :day) == %{
         ts: [Utils.GranularTime.base_ts(now - 86400)],
         new: [7],
         old: [8]
       }
     end
 
-    test "combines period and period_size", %{now: now} do
-      assert Legacy.Calls.aggregate("call-16", from: now, periods: 2, period_size: {1, :year}) == %{
+    test "combines periods and period_size", %{now: now} do
+      assert Legacy.Calls.aggregate("call-16", from: now, periods: 2) == %{
         ts: [Utils.GranularTime.base_ts(now - 2*31536000), Utils.GranularTime.base_ts(now - 31536000)],
         new: [0, 26],
         old: [0, 28]
@@ -204,7 +204,7 @@ defmodule Legacy.CallsTest do
     end
 
     test "takes weeks", %{now: now} do
-      assert Legacy.Calls.aggregate("call-16", from: now, periods: 2, period_size: {5, :week}) == %{
+      assert Legacy.Calls.aggregate("call-16", from: now, periods: 2, period_size: 5, period_granularity: :week) == %{
         ts: Utils.GranularTime.periodic_ts(now, 2, {5, :week}),
         new: [7, 19],
         old: [5, 23]
@@ -216,7 +216,7 @@ defmodule Legacy.CallsTest do
         "call-16",
         from: now,
         periods: 2,
-        period_size: {1, :month},
+        period_granularity: :month,
         aggregation: :avg
       ) == %{
         ts: [Utils.GranularTime.base_ts(now - 2 * 2592000), Utils.GranularTime.base_ts(now - 2592000)],

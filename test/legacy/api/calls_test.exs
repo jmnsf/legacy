@@ -1,4 +1,5 @@
 defmodule Legacy.Api.CallsTest do
+  import Legacy.ExtraAsserts
   use Legacy.RedisCase, async: true
   use Legacy.ExtendedMaru, for: Legacy.Api |> Legacy.Api.Calls
 
@@ -46,6 +47,36 @@ defmodule Legacy.Api.CallsTest do
       assert_raise Maru.Exceptions.Validation, ~r/new.+old/, fn ->
         post_body("/", %{ts: 1483228799000, feature_name: 'valid'})
       end
+    end
+  end
+
+  describe "GET /aggregate" do
+    test "returns 200 and no values" do
+      res = get "/aggregate?feature_name=inexistant&period_granularity=day"
+
+      assert res.status == 200
+      json = json_response(res)
+      assert json["data"]
+      assert json["data"]["new"] == [0]
+      assert json["data"]["old"] == [0]
+      assert_date_approx List.first(json["data"]["ts"]), DateTime.utc_now, 86400000
+    end
+
+    test "returns the requested amount of data with values, when they exist" do
+      now = DateTime.to_unix DateTime.utc_now
+      Legacy.Calls.incr("ft-api-call-5", now, {1, 3})
+      Legacy.Calls.incr("ft-api-call-5", now - 86400, {2, 2})
+      Legacy.Calls.incr("ft-api-call-5", now - 7 * 86400, {3, 1})
+      Legacy.Calls.incr("ft-api-call-5", now - 8 * 86400, {4, 2})
+
+      url = "aggregate?feature_name=ft-api-call-5&period_granularity=week&periods=2&from=#{now}"
+      json = json_response(get url)
+
+      assert json["data"]
+      assert json["data"]["new"] == [7, 3]
+      assert json["data"]["old"] == [3, 5]
+      assert_date_approx Enum.at(json["data"]["ts"], 0), now - 14 * 86400, 86400000
+      assert_date_approx Enum.at(json["data"]["ts"], 1), now - 7 * 86400, 86400000
     end
   end
 end
