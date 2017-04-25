@@ -1,5 +1,4 @@
 defmodule Legacy.FeaturesTest do
-  import Legacy.ExtraAsserts
   use Legacy.RedisCase, async: true
 
   describe "Legacy.Features.init/1" do
@@ -50,51 +49,6 @@ defmodule Legacy.FeaturesTest do
       Legacy.Features.init "ft-feat-4", description: "something-else"
 
       assert Redix.command!(redis, ~w(HGET features:ft-feat-4 description)) == "something-else"
-    end
-  end
-
-  describe "Legacy.Features.update/2" do
-    test "sets the given values on a new feature", %{redis: redis} do
-      Legacy.Features.update "ft-feat-5", description: "something-else", expire_period: "12"
-
-      assert Redix.command!(redis, ~w(HGETALL features:ft-feat-5)) ==
-        ["description", "something-else", "expire_period", "12"]
-    end
-
-    test "updates the given values in an existing feature", %{redis: redis} do
-      Redix.command! redis, ~w(HMSET features:ft-feat-6 description something name else)
-
-      Legacy.Features.update "ft-feat-6", description: "something-else", expire_period: "12"
-
-      assert Redix.command!(redis, ~w(HMGET features:ft-feat-6 name description expire_period)) ==
-        ["else", "something-else", "12"]
-    end
-  end
-
-  describe "Legacy.Features.exists/1" do
-    test "returns true if a feature exists" do
-      Legacy.Features.init "ft-feat-7"
-      assert Legacy.Features.exists("ft-feat-7") == true
-    end
-
-    test "returns false if a feature doesn't exist" do
-      assert Legacy.Features.exists("ft-feat-8") == false
-    end
-  end
-
-  describe "Legacy.Features.show/1" do
-    test "returns nil when the feature does not exist" do
-      assert Legacy.Features.show("ft-test-8") == nil
-    end
-
-    test "returns an initialized Feature record with the feature's attributes" do
-      Legacy.Features.init "ft-feat-9"
-      feature = Legacy.Features.show("ft-feat-9")
-
-      assert feature[:description] == "ft-feat-9"
-      assert feature[:expire_period] == 30
-      assert_date_approx feature[:created_at], DateTime.utc_now
-      assert_date_approx feature[:updated_at], DateTime.utc_now
     end
   end
 end
