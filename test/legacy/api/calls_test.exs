@@ -16,7 +16,7 @@ defmodule Legacy.Api.CallsTest do
     test "increments calls for the given timestamp" do
       post_body "/", %{feature_name: "ft-api-call-2", new: 5, old: 2, ts: 1483228799000}
 
-      assert Legacy.Calls.get("ft-api-call-2", 1483228799) == {5, 2}
+      assert Legacy.Calls.Store.get("ft-api-call-2", 1483228799) == {5, 2}
     end
 
     test "it increments and returns single calls" do
@@ -28,7 +28,7 @@ defmodule Legacy.Api.CallsTest do
         post_body "/", %{feature_name: "ft-api-call-3", old: 12, ts: 1483228799000}
       ) == %{"data" => %{"old" => 12}}
 
-      assert Legacy.Calls.get("ft-api-call-3", 1483228799) == {18, 12}
+      assert Legacy.Calls.Store.get("ft-api-call-3", 1483228799) == {18, 12}
     end
 
     test "validates needed parameters" do
@@ -64,10 +64,10 @@ defmodule Legacy.Api.CallsTest do
 
     test "returns the requested amount of data with values, when they exist" do
       now = DateTime.to_unix DateTime.utc_now
-      Legacy.Calls.incr("ft-api-call-5", now, {1, 3})
-      Legacy.Calls.incr("ft-api-call-5", now - 86400, {2, 2})
-      Legacy.Calls.incr("ft-api-call-5", now - 7 * 86400, {3, 1})
-      Legacy.Calls.incr("ft-api-call-5", now - 8 * 86400, {4, 2})
+      Legacy.Calls.Store.incr("ft-api-call-5", now, {1, 3})
+      Legacy.Calls.Store.incr("ft-api-call-5", now - 86400, {2, 2})
+      Legacy.Calls.Store.incr("ft-api-call-5", now - 7 * 86400, {3, 1})
+      Legacy.Calls.Store.incr("ft-api-call-5", now - 8 * 86400, {4, 2})
 
       url = "aggregate?feature_name=ft-api-call-5&period_granularity=week&periods=2&from=#{now}"
       json = json_response(get url)
@@ -94,7 +94,7 @@ defmodule Legacy.Api.NestedCallsTest do
 
       assert res.status == 200
       assert json_response(res) == %{"data" => %{"new" => 2, "old" => 5}}
-      assert Legacy.Calls.get("ft-api-call-4", 1483228799) == {2, 5}
+      assert Legacy.Calls.Store.get("ft-api-call-4", 1483228799) == {2, 5}
     end
   end
 end

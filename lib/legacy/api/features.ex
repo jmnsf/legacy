@@ -11,7 +11,7 @@ defmodule Legacy.Api.Features do
 
   desc "creates a new feature"
   post do
-    if Legacy.Features.exists(params[:feature_name]) do
+    if Legacy.Features.Store.exists(params[:feature_name]) do
       conn
       |> put_status(409)
       |> json(%{ errors: ["A Feature with this name already exists."] })
@@ -23,7 +23,7 @@ defmodule Legacy.Api.Features do
 
       conn
       |> put_status(201)
-      |> json(%{data: Legacy.Features.show params[:feature_name]})
+      |> json(%{data: Legacy.Features.Store.show params[:feature_name]})
     end
   end
 
@@ -34,7 +34,7 @@ defmodule Legacy.Api.Features do
 
     desc "gets the feature with the given name"
     get do
-      feature = Legacy.Features.show params[:feature_name]
+      feature = Legacy.Features.Store.show params[:feature_name]
 
       case feature do
         nil -> put_status conn, 404

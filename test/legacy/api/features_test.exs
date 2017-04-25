@@ -38,7 +38,7 @@ defmodule Legacy.Api.FeaturesTest do
     test "creates a new feature with the given name & settings" do
       post_body "/", %{feature_name: 'ft-api-feat-3', expire_period: 45}
 
-      feature = Legacy.Features.show 'ft-api-feat-3'
+      feature = Legacy.Features.Store.show 'ft-api-feat-3'
       assert feature
       assert feature[:expire_period] == 45
       assert feature[:description] == "ft-api-feat-3"
