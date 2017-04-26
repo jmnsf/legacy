@@ -8,7 +8,13 @@ defmodule Legacy.Mixfile do
      elixirc_paths: elixirc_paths(Mix.env),
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps()]
+     deps: deps(),
+     preferred_cli_env: [
+        "coveralls": :test,
+        "coveralls.html": :test,
+        "coveralls.json": :test,
+     ],
+     test_coverage: [tool: ExCoveralls]]
   end
 
   # Configuration for the OTP application
@@ -34,7 +40,8 @@ defmodule Legacy.Mixfile do
   defp deps do
     [
       {:redix, "~> 0.5.1"},
-      {:maru, "~> 0.11"}
+      {:maru, "~> 0.11"},
+      {:excoveralls, "~> 0.6.3", only: :test}
     ]
   end
 

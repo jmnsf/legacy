@@ -6,3 +6,9 @@ otp_release: 19.3
 
 services:
   - redis-server
+
+script:
+  - MIX_ENV=test mix do compile --warnings-as-errors, coveralls.json
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
