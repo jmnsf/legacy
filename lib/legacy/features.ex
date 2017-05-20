@@ -17,6 +17,12 @@ defmodule Legacy.Features do
 
   defp feature_defaults(name) do
     now = DateTime.to_iso8601 DateTime.utc_now
-    [description: name, expire_period: 30, created_at: now, updated_at: now]
+    [
+      description: name,
+      expire_period: 30,
+      rate_threshold: 0.05,
+      created_at: now,
+      updated_at: now,
+    ]
   end
 end
