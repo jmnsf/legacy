@@ -6,9 +6,9 @@ defmodule Legacy.FeaturesTest do
       Legacy.Features.init "ft-feat-1"
 
       assert Redix.command!(redis, ~w(HKEYS features:ft-feat-1)) ==
-        ["description", "expire_period", "created_at", "updated_at"]
-      assert Redix.command!(redis, ~w(HMGET features:ft-feat-1 description expire_period)) ==
-        ["ft-feat-1", "30"]
+        ["description", "expire_period", "rate_threshold", "created_at", "updated_at"]
+      assert Redix.command!(redis, ~w(HMGET features:ft-feat-1 description expire_period rate_threshold)) ==
+        ["ft-feat-1", "30", "0.05"]
 
       [created_at, updated_at] =
         Redix.command!(redis, ~w(HMGET features:ft-feat-1 created_at updated_at))
@@ -38,7 +38,7 @@ defmodule Legacy.FeaturesTest do
       Legacy.Features.init "ft-feat-3", description: "something-else"
 
       assert Redix.command!(redis, ~w(HKEYS features:ft-feat-3)) --
-        ["description", "expire_period", "created_at", "updated_at"] == []
+        ["description", "expire_period", "rate_threshold", "created_at", "updated_at"] == []
 
       assert Redix.command!(redis, ~w(HGET features:ft-feat-3 description)) == "something-else"
     end

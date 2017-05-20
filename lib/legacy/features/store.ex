@@ -66,6 +66,7 @@ defmodule Legacy.Features.Store do
 
   defp feature_key(name), do: "features:#{name}"
 
+  defp fix_value_type(:rate_threshold, value), do: elem(Float.parse(value), 0)
   defp fix_value_type(:expire_period, value), do: elem(Integer.parse(value), 0)
   defp fix_value_type(:created_at, value), do: fix_date_value(value)
   defp fix_value_type(:updated_at, value), do: fix_date_value(value)
