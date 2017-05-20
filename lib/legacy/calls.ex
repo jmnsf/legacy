@@ -99,8 +99,7 @@ defmodule Legacy.Calls do
     # TODO: stop double-reverse (in aggregation and here)
     analysis = Keyword.get opts, :analysis, :rate
 
-    aggregated = aggregate(feature_name, Keyword.drop(opts, [:analysis, :rolling]))
-
+    aggregated = aggregate(feature_name, Keyword.drop(opts, [:analysis]))
     analysed = analyse(aggregated[:new], aggregated[:old], analysis)
 
     Map.put(aggregated, :analysis, analysed)
