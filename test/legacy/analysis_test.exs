@@ -3,6 +3,10 @@ defmodule Legacy.AnalysisTest do
   doctest Legacy.Analysis
 
   describe "Legacy.Analysis.moving_average" do
+    test "returns empty array when values is empty" do
+      assert Legacy.Analysis.moving_average([], 1, :weighted) == []
+    end
+
     test "returns the values when size is 1" do
       assert Legacy.Analysis.moving_average([1, 2, 3], 1, :weighted) == [1, 2, 3]
     end

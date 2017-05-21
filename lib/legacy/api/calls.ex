@@ -6,6 +6,8 @@ defmodule Legacy.Api.Calls do
 
   helpers Legacy.Api.SharedParams
 
+  desc "registers feature calls"
+
   params do
     use :feature_name
     requires :ts, type: Timestamp
@@ -14,7 +16,6 @@ defmodule Legacy.Api.Calls do
     at_least_one_of [:new, :old]
   end
 
-  desc "registers feature calls"
   post do
     response = case Enum.map([:new, :old], &Map.has_key?(params, &1)) do
       [true, true] ->
@@ -32,16 +33,14 @@ defmodule Legacy.Api.Calls do
   end
 
   namespace :aggregate do
+    desc "aggregates and returns feature calls"
+
     params do
       use :feature_name
-      optional :from, type: Timestamp
+      use :timeseries_range
       optional :aggregation, type: Atom, values: [:sum, :avg]
-      optional :periods, type: Integer
-      optional :period_size, type: Integer
-      optional :period_granularity, type: Atom, values: [:day, :week, :month, :year]
     end
 
-    desc "aggregates and returns feature calls"
     get do
       response = Calls.aggregate(
         params[:feature_name],

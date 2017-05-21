@@ -1,11 +1,12 @@
 defmodule Legacy.Analysis do
   @doc """
   Calculate the moving average of a set of values. The result will be shortened
-  by `size` to account for the averaging.
+  by `size` - 1 to account for the averaging.
 
   Currently implements a Weighted Moving Average only.
   """
   @spec moving_average([integer], non_neg_integer, atom) :: [integer]
+  def moving_average([], _, __), do: []
   def moving_average(values, 1, _), do: values
   def moving_average(values, size, :weighted) do
     {sample, rest} = take([], values, size, 0)

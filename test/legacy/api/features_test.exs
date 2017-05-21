@@ -4,6 +4,24 @@ defmodule Legacy.Api.FeaturesTest do
   use Legacy.RedisCase, async: true
   use Legacy.ExtendedMaru, for: Legacy.Api.Features
 
+  setup_all do
+    now = DateTime.to_unix DateTime.utc_now
+
+    Legacy.Features.init("ft-api-feat-9")
+    Legacy.Calls.Store.incr("ft-api-feat-9", now, {5, 5}) # now
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 86400, {2, 3}) # 1 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 2 * 86400, {4, 3}) # 2 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 3 * 86400, {1, 4}) # 3 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 4 * 86400, {5, 4}) # 4 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 5 * 86400, {2, 4}) # 5 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 6 * 86400, {1, 1}) # 6 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 7 * 86400, {3, 1}) # 7 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 8 * 86400, {3, 3}) # 8 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 9 * 86400, {2, 8}) # 9 day
+
+    {:ok, now: now}
+  end
+
   @moduletag :api
   describe "GET /features/:feature_name" do
     test "returns 404 Not Found when there is no feature with such name" do
@@ -22,6 +40,56 @@ defmodule Legacy.Api.FeaturesTest do
       assert feature["expire_period"] == 30
       assert_date_approx feature["created_at"], DateTime.utc_now
       assert_date_approx feature["updated_at"], DateTime.utc_now
+    end
+  end
+
+  describe "GET /features/:feature_name/breakdown" do
+    test "returns 404 Not Found for a non-existing feature" do
+      assert_raise Maru.Exceptions.NotFound, fn -> get("/no-name/breakdown") end
+    end
+
+    test "returns all empty arrays if there is no data" do
+      Legacy.Features.init "ft-api-feat-8"
+      response = get "/ft-api-feat-8/breakdown"
+      json = json_response response
+
+      assert response.status == 200
+      assert json["data"]
+      assert json["data"]["ts"] == []
+      assert json["data"]["rate"] == []
+      assert json["data"]["trendline"] == []
+    end
+
+    test "returns a timeseries as JSON for the last week's timestamps", %{now: now} do
+      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+
+      assert json["data"]["ts"] ==
+        for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)
+    end
+
+    test "returns last week's daily new/old rate, in weighted average", %{now: now} do
+      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+
+      assert json["data"]["rate"] ==
+        Legacy.Analysis.moving_average(
+          [3 / 6, 3 / 4, 1 / 2, 2 / 6, 5 / 9, 1 / 5, 4 / 7, 2 / 5, 5 / 10],
+          3,
+          :weighted
+        )
+    end
+
+    test "returns a rendered trendline for last week's rate", %{now: now} do
+      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+
+      ts = for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)
+      mv_avg = Legacy.Analysis.moving_average(
+        [3 / 6, 3 / 4, 1 / 2, 2 / 6, 5 / 9, 1 / 5, 4 / 7, 2 / 5, 5 / 10],
+        3,
+        :weighted
+      )
+      regression = Legacy.Analysis.simple_regression_model(ts, mv_avg)
+
+      assert json["data"]["trendline"] == Enum.map(ts, &regression.(&1))
     end
   end
 

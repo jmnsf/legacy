@@ -142,6 +142,13 @@ defmodule Legacy.CallsTest do
     end
 
     test "can return a diff analysis", %{now: now} do
+      assert Legacy.Calls.analyse("call-2", from: now, analysis: :diff) == %{
+        ts: [Utils.GranularTime.base_ts(now - 31536000)],
+        analysis: [26 - 28]
+      }
+    end
+
+    test "can customize the periods fully, hiding datapoins with no calls", %{now: now} do
       assert Legacy.Calls.analyse(
         "call-2",
         from: now,
@@ -150,8 +157,15 @@ defmodule Legacy.CallsTest do
         period_granularity: :week,
         analysis: :diff
       ) == %{
-        ts: (for n <- (6..1), do: Utils.GranularTime.base_ts(now - n * 2 * 604800)),
-        analysis: [0, 7 - 5, 0, 7 - 8, 0, 12 - 15]
+        ts: (for n <- [5, 3, 1], do: Utils.GranularTime.base_ts(now - n * 2 * 604800)),
+        analysis: [7 - 5, 7 - 8, 12 - 15]
+      }
+    end
+
+    test "does not return timestamps for which there are no calls" do
+      assert Legacy.Calls.analyse("no-calls") == %{
+        ts: [],
+        analysis: []
       }
     end
   end

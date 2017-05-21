@@ -99,7 +99,9 @@ defmodule Legacy.Calls do
     # TODO: stop double-reverse (in aggregation and here)
     analysis = Keyword.get opts, :analysis, :rate
 
-    aggregated = aggregate(feature_name, Keyword.drop(opts, [:analysis]))
+    aggregated = filter_no_calls(
+      aggregate(feature_name, Keyword.drop(opts, [:analysis]))
+    )
     analysed = analyse(aggregated[:new], aggregated[:old], analysis)
 
     Map.put(aggregated, :analysis, analysed)
@@ -150,5 +152,25 @@ defmodule Legacy.Calls do
   defp zip_to_list(acc, []), do: acc
   defp zip_to_list([left, right], [{first, last} | tail]) do
     zip_to_list [[first | left], [last | right]], tail
+  end
+
+  # Filters all the data-points where both old and new have no values. This is
+  # so that the resulting arrays can be analysed (it makes no sense to compare
+  # values on a period with no data).
+  defp filter_no_calls(%{new: new, old: old, ts: ts}) do
+    [f_new, f_old, f_ts] = filter_no_calls [[], [], []], [new, old, ts]
+    %{ts: f_ts, new: f_new, old: f_old}
+  end
+
+  defp filter_no_calls([new, old, ts], [[], [], []]) do
+    [Enum.reverse(new), Enum.reverse(old), Enum.reverse(ts)]
+  end
+
+  defp filter_no_calls([f_new, f_old, f_ts] = filtered, [[hn | new], [ho | old], [ht | ts]]) do
+    if hn == 0 && ho == 0 do
+      filter_no_calls filtered, [new, old, ts]
+    else
+      filter_no_calls [[hn | f_new], [ho | f_old], [ht | f_ts]], [new, old, ts]
+    end
   end
 end
