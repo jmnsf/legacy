@@ -31,6 +31,18 @@ defmodule Legacy.Api.CallsTest do
       assert Legacy.Calls.Store.get("ft-api-call-3", 1483228799) == {18, 12}
     end
 
+    test "updates the feature stats with the given values" do
+      post_body "/", %{feature_name: "ft-api-call-6", new: 12, old: 11, ts: 1483228799000}
+
+      stats = Legacy.Features.Store.show_stats("ft-api-call-6")
+      datetime_ts = elem(DateTime.from_unix(1483228799), 1)
+
+      assert stats[:total_new] == 12
+      assert stats[:total_old] == 11
+      assert stats[:first_call_at] == datetime_ts
+      assert stats[:last_call_at] == datetime_ts
+    end
+
     test "validates needed parameters" do
       assert_raise Maru.Exceptions.InvalidFormat, ~r/feature_name/, fn ->
         post_body("/", %{new: 15, ts: 1483228799000})

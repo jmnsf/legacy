@@ -50,26 +50,60 @@ defmodule Legacy.Features.Store do
   doesn't exist.
   """
   @spec show(String.t) :: Map.t
-  def show(name) do
+  def show(name), do: get_all_fixed(feature_key(name))
+
+  @doc """
+  Returns the call stats for a feature with the given `name`, or nil if there
+  are none to date.
+  """
+  @spec show_stats(String.t) :: Map.t
+  def show_stats(name), do: get_all_fixed(feature_stats_key(name))
+
+  @doc """
+  Updates the call stats for the feature with the given `name`. This will
+  increment the total new & old calls, as well as set the first_call_at timestamp
+  to `ts` if it doesn't exist, and the last_call_at timestamp to `ts`.
+
+  So it's clear: this function expects to be called chronologically.
+  """
+  @spec update_stats(String.t, {non_neg_integer, non_neg_integer}, non_neg_integer) :: any
+  def update_stats(name, {new, old}, ts \\ nil) do
+    new = new || 0
+    old = old || 0
+    ts = DateTime.to_iso8601(ts && elem(DateTime.from_unix(ts), 1) || DateTime.utc_now)
+
     {:ok, redis} = redis_connection()
 
-    case Redix.command! redis, ~w(HGETALL #{feature_key(name)}) do
+    Redix.command! redis, ~w(HSETNX #{feature_stats_key(name)} first_call_at #{ts})
+    Redix.command! redis, ~w(HSET #{feature_stats_key(name)} last_call_at #{ts})
+    new > 0 && Redix.command! redis, ~w(HINCRBY #{feature_stats_key(name)} total_new #{new})
+    old > 0 && Redix.command! redis, ~w(HINCRBY #{feature_stats_key(name)} total_old #{old})
+  end
+
+  defp feature_key(name), do: "features:#{name}"
+  defp feature_stats_key(name), do: "#{feature_key(name)}:stats"
+
+  defp get_all_fixed(key) do
+    {:ok, redis} = redis_connection()
+    case Redix.command! redis, ~w(HGETALL #{key}) do
       [] -> nil
       values ->
         Stream.chunk(values, 2)
-        |> Enum.reduce(%{}, fn ([key, value], map) ->
-          atom_key = String.to_atom(key)
+        |> Enum.reduce(%{}, fn [key, value], map ->
+          atom_key = String.to_atom key
           Map.put(map, atom_key, fix_value_type(atom_key, value))
         end)
     end
   end
 
-  defp feature_key(name), do: "features:#{name}"
-
   defp fix_value_type(:rate_threshold, value), do: elem(Float.parse(value), 0)
   defp fix_value_type(:expire_period, value), do: elem(Integer.parse(value), 0)
   defp fix_value_type(:created_at, value), do: fix_date_value(value)
   defp fix_value_type(:updated_at, value), do: fix_date_value(value)
+  defp fix_value_type(:first_call_at, value), do: fix_date_value(value)
+  defp fix_value_type(:last_call_at, value), do: fix_date_value(value)
+  defp fix_value_type(:total_new, value), do: elem(Integer.parse(value), 0)
+  defp fix_value_type(:total_old, value), do: elem(Integer.parse(value), 0)
   defp fix_value_type(_, value), do: value
 
   defp fix_date_value(date_string) do

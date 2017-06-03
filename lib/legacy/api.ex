@@ -7,8 +7,8 @@ defmodule Legacy.Api do
     json_decoder: Poison,
     parsers: [:json] # add here :urlencoded or :multipart as needed
 
-  namespace :features, do: mount Legacy.Api.Features
-  namespace :calls, do: mount Legacy.Api.Calls
+  resources :features, do: mount Legacy.Api.Features
+  resources :calls, do: mount Legacy.Api.Calls
 
   rescue_from Maru.Exceptions.NotFound do
     conn

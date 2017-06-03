@@ -1,10 +1,12 @@
 defmodule Legacy.Api.Calls do
   use Maru.Router
 
-  alias Legacy.Calls.Store
+  alias Legacy.Features
   alias Legacy.Calls
 
   helpers Legacy.Api.SharedParams
+
+  desc "registers feature calls"
 
   params do
     use :feature_name
@@ -14,34 +16,33 @@ defmodule Legacy.Api.Calls do
     at_least_one_of [:new, :old]
   end
 
-  desc "registers feature calls"
   post do
     response = case Enum.map([:new, :old], &Map.has_key?(params, &1)) do
       [true, true] ->
-        {new, old} = Store.incr(
+        {new, old} = Calls.Store.incr(
           params[:feature_name], params[:ts], {params[:new], params[:old]}
         )
         %{new: new, old: old}
       [false, true] ->
-        %{old: Store.incr_old(params[:feature_name], params[:ts], params[:old])}
+        %{old: Calls.Store.incr_old(params[:feature_name], params[:ts], params[:old])}
       [true, false] ->
-        %{new: Store.incr_new(params[:feature_name], params[:ts], params[:new])}
+        %{new: Calls.Store.incr_new(params[:feature_name], params[:ts], params[:new])}
     end
+
+    Features.Store.update_stats(params[:feature_name], {params[:new], params[:old]}, params[:ts])
 
     conn |> json(%{data: response})
   end
 
   namespace :aggregate do
+    desc "aggregates and returns feature calls"
+
     params do
       use :feature_name
-      optional :from, type: Timestamp
+      use :timeseries_range
       optional :aggregation, type: Atom, values: [:sum, :avg]
-      optional :periods, type: Integer
-      optional :period_size, type: Integer
-      optional :period_granularity, type: Atom, values: [:day, :week, :month, :year]
     end
 
-    desc "aggregates and returns feature calls"
     get do
       response = Calls.aggregate(
         params[:feature_name],

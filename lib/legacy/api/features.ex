@@ -13,12 +13,13 @@ defmodule Legacy.Api.Features do
     end
   end
 
+  desc "creates a new feature"
+
   params do
     use :feature_name
     use :feature_attributes
   end
 
-  desc "creates a new feature"
   post do
     if Legacy.Features.Store.exists(params[:feature_name]) do
       conn
@@ -38,9 +39,11 @@ defmodule Legacy.Api.Features do
 
   route_param :feature_name do
     desc "gets the feature with the given name"
+
     params do
       use :feature_name
     end
+
     get do
       feature = Legacy.Features.Store.show params[:feature_name]
 
@@ -51,10 +54,12 @@ defmodule Legacy.Api.Features do
     end
 
     desc "updates an existing feature"
+
     params do
       use :feature_name
       use :feature_attributes
     end
+
     patch do
       case Legacy.Features.Store.exists(params[:feature_name]) do
         false -> put_status conn, 404
@@ -70,6 +75,37 @@ defmodule Legacy.Api.Features do
       end
     end
 
-    namespace :calls, do: mount Legacy.Api.Calls
+    namespace :breakdown do
+      desc "returns a breakdown analysis of this feature"
+
+      params do
+        use :feature_name
+        use :timeseries_range
+      end
+
+      get do
+        case Legacy.Features.Store.exists(params[:feature_name]) do
+          false -> put_status conn, 404
+          true ->
+            data = Legacy.Api.Controllers.Features.breakdown(
+              default_breakdown_params params
+            )
+
+            conn
+            |> put_status(200)
+            |> json(%{data: data})
+        end
+      end
+    end
+
+    resources :calls, do: mount Legacy.Api.Calls
+  end
+
+  # Returns 7 periods by default, or whatever value is requested. Because we're
+  # calculating a 3-step moving average, 2 more "periods" need to be requested.
+  defp default_breakdown_params(params) do
+    params
+    |> Map.put_new(:period_granularity, :day)
+    |> Map.update(:periods, 9, &(&1 + 2))
   end
 end
