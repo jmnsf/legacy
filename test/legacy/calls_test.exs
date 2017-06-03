@@ -127,24 +127,24 @@ defmodule Legacy.CallsTest do
   end
 
   describe "Legacy.Calls.analyse" do
-    test "returns last year's new rate by default", %{now: now} do
+    test "returns last year's old rate by default", %{now: now} do
       assert Legacy.Calls.analyse("call-2", from: now) == %{
         ts: [Utils.GranularTime.base_ts(now - 31536000)],
-        analysis: [26 / 54]
+        analysis: [28 / 54]
       }
     end
 
     test "supports the same options as `aggregate`", %{now: now} do
       assert Legacy.Calls.analyse("call-2", from: now, periods: 3, period_granularity: :month) == %{
         ts: (for n <- (3..1), do: Utils.GranularTime.base_ts(now - n * 2592000)),
-        analysis: [7 / 12, 7 / 15, 12 / 27]
+        analysis: [5 / 12, 8 / 15, 15 / 27]
       }
     end
 
     test "can return a diff analysis", %{now: now} do
       assert Legacy.Calls.analyse("call-2", from: now, analysis: :diff) == %{
         ts: [Utils.GranularTime.base_ts(now - 31536000)],
-        analysis: [26 - 28]
+        analysis: [28 - 26]
       }
     end
 
@@ -158,7 +158,7 @@ defmodule Legacy.CallsTest do
         analysis: :diff
       ) == %{
         ts: (for n <- [5, 3, 1], do: Utils.GranularTime.base_ts(now - n * 2 * 604800)),
-        analysis: [7 - 5, 7 - 8, 12 - 15]
+        analysis: [5 - 7, 8 - 7, 15 - 12]
       }
     end
 

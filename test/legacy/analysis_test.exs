@@ -13,7 +13,13 @@ defmodule Legacy.AnalysisTest do
 
     test "calculates the weighted average of the given values by sized sample" do
       assert Legacy.Analysis.moving_average([1, 2, 3, 4, 5, 6, 7], 3, :weighted) ==
-        [14 / 6, 20 / 6, 26 / 6, 32 / 6, 38 / 6]
+        [
+          ((1 * 1) + (2 * 2) + (3 * 3)) / 6,
+          ((2 * 1) + (3 * 2) + (4 * 3)) / 6,
+          ((3 * 1) + (4 * 2) + (5 * 3)) / 6,
+          ((4 * 1) + (5 * 2) + (6 * 3)) / 6,
+          ((5 * 1) + (6 * 2) + (7 * 3)) / 6
+        ]
     end
   end
 end

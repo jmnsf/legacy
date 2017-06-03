@@ -102,7 +102,7 @@ defmodule Legacy.Calls do
     aggregated = filter_no_calls(
       aggregate(feature_name, Keyword.drop(opts, [:analysis]))
     )
-    analysed = analyse(aggregated[:new], aggregated[:old], analysis)
+    analysed = analyse(aggregated[:old], aggregated[:new], analysis)
 
     Map.put(aggregated, :analysis, analysed)
     |> Map.drop([:new, :old])

@@ -8,14 +8,14 @@ defmodule Legacy.Api.FeaturesTest do
     now = DateTime.to_unix DateTime.utc_now
 
     Legacy.Features.init("ft-api-feat-9")
-    Legacy.Calls.Store.incr("ft-api-feat-9", now, {5, 5}) # now
-    Legacy.Calls.Store.incr("ft-api-feat-9", now - 86400, {2, 3}) # 1 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now, {7, 3}) # now
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 86400, {3, 2}) # 1 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 2 * 86400, {4, 3}) # 2 day
-    Legacy.Calls.Store.incr("ft-api-feat-9", now - 3 * 86400, {1, 4}) # 3 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 3 * 86400, {4, 4}) # 3 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 4 * 86400, {5, 4}) # 4 day
-    Legacy.Calls.Store.incr("ft-api-feat-9", now - 5 * 86400, {2, 4}) # 5 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 5 * 86400, {3, 4}) # 5 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 6 * 86400, {1, 1}) # 6 day
-    Legacy.Calls.Store.incr("ft-api-feat-9", now - 7 * 86400, {3, 1}) # 7 day
+    Legacy.Calls.Store.incr("ft-api-feat-9", now - 7 * 86400, {3, 2}) # 7 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 8 * 86400, {3, 3}) # 8 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 9 * 86400, {2, 8}) # 9 day
 
@@ -58,6 +58,7 @@ defmodule Legacy.Api.FeaturesTest do
       assert json["data"]["ts"] == []
       assert json["data"]["rate"] == []
       assert json["data"]["trendline"] == []
+      assert json["data"]["threshold_ts"] == nil
     end
 
     test "returns a timeseries as JSON for the last week's timestamps", %{now: now} do
@@ -67,12 +68,12 @@ defmodule Legacy.Api.FeaturesTest do
         for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)
     end
 
-    test "returns last week's daily new/old rate, in weighted average", %{now: now} do
+    test "returns last week's daily old/new rate, in weighted average", %{now: now} do
       json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
 
       assert json["data"]["rate"] ==
         Legacy.Analysis.moving_average(
-          [3 / 6, 3 / 4, 1 / 2, 2 / 6, 5 / 9, 1 / 5, 4 / 7, 2 / 5, 5 / 10],
+          [3 / 6, 2 / 5, 1 / 2, 4 / 7, 4 / 9, 4 / 8, 3 / 7, 2 / 5, 3 / 10],
           3,
           :weighted
         )
@@ -83,13 +84,31 @@ defmodule Legacy.Api.FeaturesTest do
 
       ts = for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)
       mv_avg = Legacy.Analysis.moving_average(
-        [3 / 6, 3 / 4, 1 / 2, 2 / 6, 5 / 9, 1 / 5, 4 / 7, 2 / 5, 5 / 10],
+        [3 / 6, 2 / 5, 1 / 2, 4 / 7, 4 / 9, 4 / 8, 3 / 7, 2 / 5, 3 / 10],
         3,
         :weighted
       )
-      regression = Legacy.Analysis.simple_regression_model(ts, mv_avg)
+      model = Legacy.Analysis.simple_regression_model(ts, mv_avg)
 
-      assert json["data"]["trendline"] == Enum.map(ts, &regression.(&1))
+      assert json["data"]["trendline"] ==
+        Enum.map(ts, &Legacy.Analysis.Regression.predict(model, &1))
+    end
+
+    test "returns a predicted timestamp for the threshold to be met", %{now: now} do
+      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+
+      model = Legacy.Analysis.simple_regression_model(
+        (for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)),
+        Legacy.Analysis.moving_average(
+          [3 / 6, 2 / 5, 1 / 2, 4 / 7, 4 / 9, 4 / 8, 3 / 7, 2 / 5, 3 / 10],
+          3,
+          :weighted
+        )
+      )
+
+      assert json["data"]["threshold_ts"]
+      assert json["data"]["threshold_ts"] == round(Legacy.Analysis.Regression.invert(model, 0.05))
+      assert json["data"]["threshold_ts"] > List.first(json["data"]["ts"])
     end
   end
 
