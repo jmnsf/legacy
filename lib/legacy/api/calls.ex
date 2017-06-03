@@ -1,7 +1,7 @@
 defmodule Legacy.Api.Calls do
   use Maru.Router
 
-  alias Legacy.Calls.Store
+  alias Legacy.Features
   alias Legacy.Calls
 
   helpers Legacy.Api.SharedParams
@@ -19,15 +19,17 @@ defmodule Legacy.Api.Calls do
   post do
     response = case Enum.map([:new, :old], &Map.has_key?(params, &1)) do
       [true, true] ->
-        {new, old} = Store.incr(
+        {new, old} = Calls.Store.incr(
           params[:feature_name], params[:ts], {params[:new], params[:old]}
         )
         %{new: new, old: old}
       [false, true] ->
-        %{old: Store.incr_old(params[:feature_name], params[:ts], params[:old])}
+        %{old: Calls.Store.incr_old(params[:feature_name], params[:ts], params[:old])}
       [true, false] ->
-        %{new: Store.incr_new(params[:feature_name], params[:ts], params[:new])}
+        %{new: Calls.Store.incr_new(params[:feature_name], params[:ts], params[:new])}
     end
+
+    Features.Store.update_stats(params[:feature_name], {params[:new], params[:old]}, params[:ts])
 
     conn |> json(%{data: response})
   end

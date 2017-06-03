@@ -18,7 +18,7 @@ defmodule Legacy.Api.Controllers.Features do
     case rate_analysis[:analysis] do
       [] -> %{rate: [], trendline: [], ts: [], threshold_ts: nil}
       _ ->
-        ts = Enum.drop rate_analysis[:ts], 2
+        ts = Enum.drop rate_analysis[:ts], 2 # we got 2 extra TS for the weighted average
         rate = Legacy.Analysis.moving_average rate_analysis[:analysis], 3, :weighted
         model = Legacy.Analysis.simple_regression_model ts, rate
         feature = Legacy.Features.Store.show params[:feature_name]
@@ -28,7 +28,8 @@ defmodule Legacy.Api.Controllers.Features do
           rate: rate,
           trendline: Enum.map(ts, &Regression.predict(model, &1)),
           ts: ts,
-          threshold_ts: round(predicted_threshold_ts)
+          threshold_ts: round(predicted_threshold_ts),
+          stats: Legacy.Features.Store.show_stats(params[:feature_name])
         }
     end
   end

@@ -18,6 +18,7 @@ defmodule Legacy.Api.FeaturesTest do
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 7 * 86400, {3, 2}) # 7 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 8 * 86400, {3, 3}) # 8 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 9 * 86400, {2, 8}) # 9 day
+    Legacy.Features.Store.update_stats("ft-api-feat-9", {35, 33}, now)
 
     {:ok, now: now}
   end
@@ -109,6 +110,17 @@ defmodule Legacy.Api.FeaturesTest do
       assert json["data"]["threshold_ts"]
       assert json["data"]["threshold_ts"] == round(Legacy.Analysis.Regression.invert(model, 0.05))
       assert json["data"]["threshold_ts"] > List.first(json["data"]["ts"])
+    end
+
+    test "returns the feature call stats", %{now: now} do
+      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+
+      assert json["data"]["stats"]
+      assert json["data"]["stats"]["total_new"] == 35
+      assert json["data"]["stats"]["total_old"] == 33
+      assert_date_approx json["data"]["stats"]["first_call_at"], now
+      assert_date_approx json["data"]["stats"]["last_call_at"], now
+      assert json["data"]["stats"]["first_call_at"] == json["data"]["stats"]["last_call_at"]
     end
   end
 
