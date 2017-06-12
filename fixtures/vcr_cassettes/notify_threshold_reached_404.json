@@ -1,0 +1,26 @@
+[
+  {
+    "request": {
+      "body": "{\"meta\":{\"topic\":\"threshold.reached\"},\"data\":{\"threshold\":0.1,\"feature_name\":\"a-404-feature\"}}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "method": "post",
+      "options": [],
+      "request_body": "",
+      "url": "http://www.mocky.io/v2/593bcc61100000620dc4774d"
+    },
+    "response": {
+      "body": "",
+      "headers": {
+        "Server": "Cowboy",
+        "Connection": "close",
+        "Content-Type": "application/json; charset=utf-8",
+        "Date": "Sat, 10 Jun 2017 10:42:31 GMT",
+        "Via": "1.1 vegur"
+      },
+      "status_code": 404,
+      "type": "ok"
+    }
+  }
+]

@@ -21,19 +21,19 @@ defmodule Legacy.Api.Features do
   end
 
   post do
-    if Legacy.Features.Store.exists(params[:feature_name]) do
+    if Legacy.Feature.Store.exists(params[:feature_name]) do
       conn
       |> put_status(409)
       |> json(%{ errors: ["A Feature with this name already exists."] })
     else
-      Legacy.Features.init(
+      Legacy.Feature.init(
         params[:feature_name],
         Map.to_list(Map.delete(params, :feature_name))
       )
 
       conn
       |> put_status(201)
-      |> json(%{data: Legacy.Features.Store.show params[:feature_name]})
+      |> json(%{data: Legacy.Feature.Store.show params[:feature_name]})
     end
   end
 
@@ -45,7 +45,7 @@ defmodule Legacy.Api.Features do
     end
 
     get do
-      feature = Legacy.Features.Store.show params[:feature_name]
+      feature = Legacy.Feature.Store.show params[:feature_name]
 
       case feature do
         nil -> put_status conn, 404
@@ -61,17 +61,17 @@ defmodule Legacy.Api.Features do
     end
 
     patch do
-      case Legacy.Features.Store.exists(params[:feature_name]) do
+      case Legacy.Feature.Store.exists(params[:feature_name]) do
         false -> put_status conn, 404
         true ->
-          Legacy.Features.Store.update(
+          Legacy.Feature.Store.update(
             params[:feature_name],
             Map.to_list(Map.delete(params, :feature_name))
           )
 
           conn
           |> put_status(200)
-          |> json(%{data: Legacy.Features.Store.show params[:feature_name]})
+          |> json(%{data: Legacy.Feature.Store.show params[:feature_name]})
       end
     end
 
@@ -84,7 +84,7 @@ defmodule Legacy.Api.Features do
       end
 
       get do
-        case Legacy.Features.Store.exists(params[:feature_name]) do
+        case Legacy.Feature.Store.exists(params[:feature_name]) do
           false -> put_status conn, 404
           true ->
             data = Legacy.Api.Controllers.Features.breakdown(

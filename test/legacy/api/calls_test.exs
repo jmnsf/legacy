@@ -34,7 +34,7 @@ defmodule Legacy.Api.CallsTest do
     test "updates the feature stats with the given values" do
       post_body "/", %{feature_name: "ft-api-call-6", new: 12, old: 11, ts: 1483228799000}
 
-      stats = Legacy.Features.Store.show_stats("ft-api-call-6")
+      stats = Legacy.Feature.Store.show_stats("ft-api-call-6")
       datetime_ts = elem(DateTime.from_unix(1483228799), 1)
 
       assert stats[:total_new] == 12

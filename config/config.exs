@@ -29,11 +29,22 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 
-config :maru, Legacy.Api,
-  http: [port: 80]
-
 config :logger,
   backends: [:console],
   compile_time_purge_level: :info
+
+config :maru, Legacy.Api,
+  http: [port: 80]
+
+config :legacy, Legacy.Redis,
+  endpoint: "redis://localhost/14"
+
+config :legacy, Legacy.Mailer,
+  adapter: Bamboo.MailgunAdapter,
+  api_key: System.get_env("MAIGUN_API_KEY"),
+  domain: "legacy.jmnsf.com"
+
+config :legacy, Legacy.Email,
+  from: "Legacy <hello@legacy.jmnsf.com>"
 
 import_config "#{Mix.env}.exs"
