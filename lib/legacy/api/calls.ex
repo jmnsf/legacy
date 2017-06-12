@@ -1,7 +1,7 @@
 defmodule Legacy.Api.Calls do
   use Maru.Router
 
-  alias Legacy.Features
+  alias Legacy.Feature
   alias Legacy.Calls
 
   helpers Legacy.Api.SharedParams
@@ -29,7 +29,7 @@ defmodule Legacy.Api.Calls do
         %{new: Calls.Store.incr_new(params[:feature_name], params[:ts], params[:new])}
     end
 
-    Features.Store.update_stats(params[:feature_name], {params[:new], params[:old]}, params[:ts])
+    Feature.Store.update_stats(params[:feature_name], {params[:new], params[:old]}, params[:ts])
 
     conn |> json(%{data: response})
   end

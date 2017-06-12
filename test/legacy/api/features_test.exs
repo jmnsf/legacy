@@ -7,7 +7,7 @@ defmodule Legacy.Api.FeaturesTest do
   setup_all do
     now = DateTime.to_unix DateTime.utc_now
 
-    Legacy.Features.init("ft-api-feat-9")
+    Legacy.Feature.init("ft-api-feat-9")
     Legacy.Calls.Store.incr("ft-api-feat-9", now, {7, 3}) # now
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 86400, {3, 2}) # 1 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 2 * 86400, {4, 3}) # 2 day
@@ -18,7 +18,7 @@ defmodule Legacy.Api.FeaturesTest do
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 7 * 86400, {3, 2}) # 7 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 8 * 86400, {3, 3}) # 8 day
     Legacy.Calls.Store.incr("ft-api-feat-9", now - 9 * 86400, {2, 8}) # 9 day
-    Legacy.Features.Store.update_stats("ft-api-feat-9", {35, 33}, now)
+    Legacy.Feature.Store.update_stats("ft-api-feat-9", {35, 33}, now)
 
     {:ok, now: now}
   end
@@ -30,7 +30,7 @@ defmodule Legacy.Api.FeaturesTest do
     end
 
     test "returns the feature as JSON when it does exist" do
-      Legacy.Features.init "ft-api-feat-1"
+      Legacy.Feature.init "ft-api-feat-1"
       response = get("/ft-api-feat-1")
 
       assert response.status == 200
@@ -50,7 +50,7 @@ defmodule Legacy.Api.FeaturesTest do
     end
 
     test "returns all empty arrays if there is no data" do
-      Legacy.Features.init "ft-api-feat-8"
+      Legacy.Feature.init "ft-api-feat-8"
       response = get "/ft-api-feat-8/breakdown"
       json = json_response response
 
@@ -126,7 +126,7 @@ defmodule Legacy.Api.FeaturesTest do
 
   describe "POST /features" do
     test "errors out if a feature exists with the given name" do
-      Legacy.Features.init "ft-api-feat-2"
+      Legacy.Feature.init "ft-api-feat-2"
 
       res = post_body "/", %{feature_name: "ft-api-feat-2"}
 
@@ -137,12 +137,12 @@ defmodule Legacy.Api.FeaturesTest do
     test "creates a new feature with the given name & settings" do
       post_body "/", %{feature_name: 'ft-api-feat-3', expire_period: 45}
 
-      feature = Legacy.Features.Store.show 'ft-api-feat-3'
+      feature = Legacy.Feature.Store.show 'ft-api-feat-3'
       assert feature
-      assert feature[:expire_period] == 45
-      assert feature[:description] == "ft-api-feat-3"
-      assert_date_approx feature[:created_at], DateTime.utc_now
-      assert_date_approx feature[:updated_at], DateTime.utc_now
+      assert feature.expire_period == 45
+      assert feature.description == "ft-api-feat-3"
+      assert_date_approx feature.created_at, DateTime.utc_now
+      assert_date_approx feature.updated_at, DateTime.utc_now
     end
 
     test "returns the new feature as JSON" do
@@ -167,18 +167,18 @@ defmodule Legacy.Api.FeaturesTest do
     end
 
     test "updates the existing feature with the given data" do
-      Legacy.Features.init "ft-api-feat-5"
+      Legacy.Feature.init "ft-api-feat-5"
 
       patch_body "/ft-api-feat-5", %{alert_email: 'an@email.com', expire_period: 45}
 
-      feature = Legacy.Features.Store.show "ft-api-feat-5"
-      assert feature[:alert_email] == "an@email.com"
-      assert feature[:expire_period] == 45
-      assert feature[:description] == "ft-api-feat-5"
+      feature = Legacy.Feature.Store.show "ft-api-feat-5"
+      assert feature.alert_email == "an@email.com"
+      assert feature.expire_period == 45
+      assert feature.description == "ft-api-feat-5"
     end
 
     test "returns the updated feature as JSON" do
-      Legacy.Features.init "ft-api-feat-6"
+      Legacy.Feature.init "ft-api-feat-6"
 
       res = patch_body "/ft-api-feat-6", %{alert_endpoint: 'https://endpoint.com/legacy', rate_threshold: 0.1}
       json = json_response res
@@ -197,7 +197,7 @@ defmodule Legacy.Api.FeaturesTest do
     end
 
     test "validates the passed parameters" do
-      Legacy.Features.init "ft-api-feat-7"
+      Legacy.Feature.init "ft-api-feat-7"
 
       assert_raise Maru.Exceptions.Validation, fn ->
         patch_body "/ft-api-feat-7", %{rate_threshold: 1.2}

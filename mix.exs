@@ -23,7 +23,7 @@ defmodule Legacy.Mixfile do
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [
-      applications: [:redix, :maru],
+      applications: [:redix, :maru, :httpoison, :bamboo],
       extra_applications: [:logger]
     ]
   end
@@ -41,7 +41,11 @@ defmodule Legacy.Mixfile do
     [
       {:redix, "~> 0.5.1"},
       {:maru, "~> 0.11"},
-      {:excoveralls, "~> 0.6.3", only: :test}
+      {:httpoison, "~> 0.11.1"},
+      {:bamboo, "~> 0.8"},
+      {:mustache, "~> 0.0.2"},
+      {:excoveralls, "~> 0.6.3", only: :test},
+      {:exvcr, "~> 0.8", only: :test}
     ]
   end
 

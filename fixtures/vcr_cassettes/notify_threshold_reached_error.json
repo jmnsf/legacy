@@ -1,0 +1,20 @@
+[
+  {
+    "request": {
+      "body": "{\"meta\":{\"topic\":\"threshold.reached\"},\"data\":{\"threshold\":0.15,\"feature_name\":\"a-bad-feature\"}}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "method": "post",
+      "options": [],
+      "request_body": "",
+      "url": "http://www.bad-endpoint.com/trash"
+    },
+    "response": {
+      "body": "nxdomain",
+      "headers": [],
+      "status_code": null,
+      "type": "error"
+    }
+  }
+]

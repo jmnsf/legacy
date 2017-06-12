@@ -1,4 +1,4 @@
-defmodule Legacy.Features.Store do
+defmodule Legacy.Feature.Store do
   @moduledoc """
   Provides a CRUD interface for Features. These are identified by a unique name
   and store such information as their expiry periods and create/update dates.
@@ -48,9 +48,19 @@ defmodule Legacy.Features.Store do
   @doc """
   Returns the current config for a feature with the given `name` or nil if it
   doesn't exist.
+
+  Adds the feature's name for ease of use.
   """
-  @spec show(String.t) :: Map.t
-  def show(name), do: get_all_fixed(feature_key(name))
+  @spec show(String.t) :: %Legacy.Feature{} | nil
+  def show(name) do
+    attrs = get_all_fixed(feature_key(name))
+
+    if attrs == nil do
+      nil
+    else
+      struct %Legacy.Feature{}, Map.put(attrs, :name, name)
+    end
+  end
 
   @doc """
   Returns the call stats for a feature with the given `name`, or nil if there
@@ -80,11 +90,23 @@ defmodule Legacy.Features.Store do
     old > 0 && Redix.command! redis, ~w(HINCRBY #{feature_stats_key(name)} total_old #{old})
   end
 
-  defp feature_key(name), do: "features:#{name}"
-  defp feature_stats_key(name), do: "#{feature_key(name)}:stats"
+  @doc """
+  Returns a Stream that yields all feature names that exist in the database.
+  This _might_ return the same name twice.
+  """
+  @spec stream_all_feature_names :: Stream.t
+  def stream_all_feature_names do
+    scan("features:*:feature")
+    |> Stream.map(fn key -> List.first(Regex.run(~r/:([\w-]+):/, key, capture: :all_but_first)) end)
+  end
+
+  defp base_feature_key(name), do: "features:#{name}"
+  defp feature_key(name), do: "#{base_feature_key(name)}:feature"
+  defp feature_stats_key(name), do: "#{base_feature_key(name)}:stats"
 
   defp get_all_fixed(key) do
     {:ok, redis} = redis_connection()
+
     case Redix.command! redis, ~w(HGETALL #{key}) do
       [] -> nil
       values ->
@@ -104,6 +126,7 @@ defmodule Legacy.Features.Store do
   defp fix_value_type(:last_call_at, value), do: fix_date_value(value)
   defp fix_value_type(:total_new, value), do: elem(Integer.parse(value), 0)
   defp fix_value_type(:total_old, value), do: elem(Integer.parse(value), 0)
+  defp fix_value_type(:notified, value), do: value == "true"
   defp fix_value_type(_, value), do: value
 
   defp fix_date_value(date_string) do
