@@ -6,7 +6,7 @@ defmodule Legacy.FeatureTest do
       Legacy.Feature.init "ft-feat-1"
 
       assert Redix.command!(redis, ~w(HKEYS features:ft-feat-1:feature)) ==
-        ["created_at", "description", "expire_period", "notified", "rate_threshold", "updated_at"]
+        ["created_at", "description", "expire_period", "rate_threshold", "updated_at"]
       assert Redix.command!(redis, ~w(HMGET features:ft-feat-1:feature description expire_period rate_threshold)) ==
         ["ft-feat-1", "30", "0.05"]
 
@@ -38,7 +38,7 @@ defmodule Legacy.FeatureTest do
       Legacy.Feature.init "ft-feat-3", description: "something-else"
 
       assert Redix.command!(redis, ~w(HKEYS features:ft-feat-3:feature)) --
-        ["description", "expire_period", "rate_threshold", "notified", "created_at", "updated_at"] == []
+        ["description", "expire_period", "rate_threshold", "notified_at", "created_at", "updated_at"] == []
 
       assert Redix.command!(redis, ~w(HGET features:ft-feat-3:feature description)) == "something-else"
     end
@@ -60,12 +60,12 @@ defmodule Legacy.FeatureTest do
       ]
     end
 
-    test "resets the notified flag if the rate_threshold is updated", %{redis: redis} do
-      Legacy.Feature.init "ft-feat-5", rate_threshold: 0.05, notified: true
+    test "resets the notified date if the rate_threshold is updated", %{redis: redis} do
+      Legacy.Feature.init "ft-feat-5", rate_threshold: 0.05, notified_at: "2017-01-01T10:00:00Z"
 
       Legacy.Feature.update("ft-feat-5", rate_threshold: 0.1)
 
-      assert Redix.command!(redis, ~w(HGET features:ft-feat-5:feature notified)) == "false"
+      assert Redix.command!(redis, ~w(HGET features:ft-feat-5:feature notified_at)) == nil
     end
   end
 end

@@ -11,7 +11,7 @@ defmodule Legacy.Feature do
   * alert_endpoint: When defined, this endpoint will receive a webhook when the `rate_threshold` is
   reached.
   * alert_email: Same as `alert_endpoint` but will receive an email at this address.
-  * notified: Whether this feature has triggered a rate notification.
+  * notified_at: When this feature triggered a rate notification, if it did.
   * created_at: When the feature was first seen.
   * updated_at: Last time the feature data was edited.
 
@@ -22,7 +22,7 @@ defmodule Legacy.Feature do
     description: nil,
     expire_period: 30,
     rate_threshold: 0.05,
-    notified: false,
+    notified_at: nil,
     alert_email: nil,
     alert_endpoint: nil,
     created_at: nil,
@@ -53,7 +53,7 @@ defmodule Legacy.Feature do
   @spec update(String.t, [{atom, any}]) :: :ok
   def update(name, attrs) do
     attrs = if Keyword.has_key? attrs, :rate_threshold do
-      Keyword.put_new(attrs, :notified, false)
+      Keyword.put_new(attrs, :notified_at, nil)
     else
       attrs
     end

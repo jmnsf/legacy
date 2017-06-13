@@ -23,6 +23,15 @@ defmodule Legacy.Feature.Store.StoreTest do
       Legacy.Feature.Store.update "feat-store-8", description: "something else"
       assert Redix.command!(redis, ~w(HGET features:feat-store-8:feature description)) == "something else"
     end
+
+    test "removes values that are given nil", %{redis: redis} do
+      Redix.command! redis, ~w(HMSET features:feat-store-16:feature description something)
+
+      Legacy.Feature.Store.update "feat-store-16", description: nil, alert_email: "woop"
+
+      assert Redix.command!(redis, ~w(HMGET features:feat-store-16:feature description alert_email)) ==
+        [nil, "woop"]
+    end
   end
 
   describe "Legacy.Feature.Store.exists/1" do
@@ -49,7 +58,7 @@ defmodule Legacy.Feature.Store.StoreTest do
       assert feature.description == "feat-store-5"
       assert feature.name == "feat-store-5"
       assert feature.expire_period == 30
-      assert feature.notified == false
+      assert feature.notified_at == nil
       assert feature.alert_endpoint == nil
       assert feature.alert_email == nil
       assert_date_approx feature.created_at, DateTime.utc_now
