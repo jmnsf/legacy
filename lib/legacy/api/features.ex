@@ -64,7 +64,7 @@ defmodule Legacy.Api.Features do
       case Legacy.Feature.Store.exists(params[:feature_name]) do
         false -> put_status conn, 404
         true ->
-          Legacy.Feature.Store.update(
+          Legacy.Feature.update(
             params[:feature_name],
             Map.to_list(Map.delete(params, :feature_name))
           )

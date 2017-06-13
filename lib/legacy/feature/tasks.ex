@@ -25,7 +25,7 @@ defmodule Legacy.Feature.Tasks do
     |> Stream.run()
   end
 
-  defp feature_notifiable?(%Feature{notified: true}), do: false
+  defp feature_notifiable?(%Feature{notified_at: notif}) when not is_nil(notif), do: false
   defp feature_notifiable?(%Feature{alert_endpoint: nil, alert_email: nil}), do: false
   defp feature_notifiable?(%Feature{}), do: true
 
@@ -42,8 +42,10 @@ defmodule Legacy.Feature.Tasks do
       "(#{rate} < #{feature.rate_threshold})"
     )
 
+    notified_at = DateTime.to_iso8601 DateTime.utc_now
+
     case Legacy.Notification.notify_threshold_reached feature do
-      {:ok, _} -> Feature.Store.update(feature.name, %{notified: true})
+      {:ok, _} -> Feature.Store.update(feature.name, notified_at: notified_at)
       {:error, err} -> Logger.warn("Error sending notification: #{inspect err}")
     end
   end

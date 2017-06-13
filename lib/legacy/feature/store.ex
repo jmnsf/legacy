@@ -7,17 +7,15 @@ defmodule Legacy.Feature.Store do
   import Legacy.Redis
 
   @doc """
-  Update an existing feature. Updates only the given attributes in `opts`.
+  Update an existing feature. Updates only the given attributes in `attrs`.
   """
-  @spec update(String.t, [{String.t, any}]) :: String.t
+  @spec update(String.t, [{String.t | atom, any}]) :: String.t
   def update(_name, []), do: nil
-  def update(name, opts) do
-    {:ok, redis} = redis_connection()
+  def update(name, attrs) do
+    {to_remove, to_update} = Enum.split_with(attrs, fn {_, value} -> is_nil(value) end)
 
-    params = Enum.flat_map(opts, fn { key, value } -> [key, value] end)
-    command = ["HMSET" | [feature_key(name) | params]]
-
-    Redix.command! redis, command
+    set_attributes name, to_update
+    del_keys name, Enum.map(to_remove, &elem(&1, 0))
   end
 
   @doc """
@@ -100,6 +98,25 @@ defmodule Legacy.Feature.Store do
     |> Stream.map(fn key -> List.first(Regex.run(~r/:([\w-]+):/, key, capture: :all_but_first)) end)
   end
 
+  # sets the given `attrs` in the feature map. `attrs` is a list of {key, value} tuples.
+  defp set_attributes(_, []), do: :ok
+  defp set_attributes(name, attrs) do
+    {:ok, redis} = redis_connection()
+
+    params = Enum.flat_map(attrs, fn { key, value } -> [key, value] end)
+    command = ["HMSET" | [feature_key(name) | params]]
+
+    Redix.command! redis, command
+  end
+
+  defp del_keys(_, []), do: :ok
+  defp del_keys(name, keys) do
+    {:ok, redis} = redis_connection()
+
+    command = ["HDEL" | [feature_key(name) | keys]]
+    Redix.command! redis, command
+  end
+
   defp base_feature_key(name), do: "features:#{name}"
   defp feature_key(name), do: "#{base_feature_key(name)}:feature"
   defp feature_stats_key(name), do: "#{base_feature_key(name)}:stats"
@@ -126,7 +143,7 @@ defmodule Legacy.Feature.Store do
   defp fix_value_type(:last_call_at, value), do: fix_date_value(value)
   defp fix_value_type(:total_new, value), do: elem(Integer.parse(value), 0)
   defp fix_value_type(:total_old, value), do: elem(Integer.parse(value), 0)
-  defp fix_value_type(:notified, value), do: value == "true"
+  defp fix_value_type(:notified_at, value), do: fix_date_value(value)
   defp fix_value_type(_, value), do: value
 
   defp fix_date_value(date_string) do
