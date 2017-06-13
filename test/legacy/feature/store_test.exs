@@ -49,6 +49,9 @@ defmodule Legacy.Feature.Store.StoreTest do
       assert feature.description == "feat-store-5"
       assert feature.name == "feat-store-5"
       assert feature.expire_period == 30
+      assert feature.notified == false
+      assert feature.alert_endpoint == nil
+      assert feature.alert_email == nil
       assert_date_approx feature.created_at, DateTime.utc_now
       assert_date_approx feature.updated_at, DateTime.utc_now
     end

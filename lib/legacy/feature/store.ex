@@ -9,7 +9,7 @@ defmodule Legacy.Feature.Store do
   @doc """
   Update an existing feature. Updates only the given attributes in `opts`.
   """
-  @spec update(String.t, [{String.t, any}]) :: String.t
+  @spec update(String.t, [{String.t | atom, any}]) :: String.t
   def update(_name, []), do: nil
   def update(name, opts) do
     {:ok, redis} = redis_connection()

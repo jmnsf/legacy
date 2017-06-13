@@ -51,6 +51,23 @@ defmodule Legacy.FeatureTest do
       assert Redix.command!(redis, ~w(HGET features:ft-feat-4:feature description)) == "something-else"
     end
   end
+
+  describe "Legacy.Feature.update/2" do
+    test "puts the given attributes on the feature map", %{redis: redis} do
+      Legacy.Feature.update("ft-feat-6", alert_email: "an@email.com", description: "stuff")
+      assert Redix.command!(redis, ~w(HGETALL features:ft-feat-6:feature)) == [
+        "alert_email", "an@email.com", "description", "stuff"
+      ]
+    end
+
+    test "resets the notified flag if the rate_threshold is updated", %{redis: redis} do
+      Legacy.Feature.init "ft-feat-5", rate_threshold: 0.05, notified: true
+
+      Legacy.Feature.update("ft-feat-5", rate_threshold: 0.1)
+
+      assert Redix.command!(redis, ~w(HGET features:ft-feat-5:feature notified)) == "false"
+    end
+  end
 end
 
 

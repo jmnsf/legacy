@@ -47,6 +47,22 @@ defmodule Legacy.Feature do
   end
 
   @doc """
+  Updates (or inits) a feature. Resets the notified status if the threshold is
+  updated.
+  """
+  @spec update(String.t, [{atom, any}]) :: :ok
+  def update(name, attrs) do
+    attrs = if Keyword.has_key? attrs, :rate_threshold do
+      Keyword.put_new(attrs, :notified, false)
+    else
+      attrs
+    end
+
+    Store.update(name, attrs)
+    :ok
+  end
+
+  @doc """
   Returns a stream that yields all features in the DB. It _might_ return the
   same feature more than once.
   """
