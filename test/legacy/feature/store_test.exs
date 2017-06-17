@@ -70,7 +70,7 @@ defmodule Legacy.Feature.Store.StoreTest do
     test "sets all the given values for a non-existing feature", %{redis: redis} do
       Legacy.Feature.Store.set_missing("feat-store-6", description: "a-feat", expire_period: 30)
       assert Redix.command!(redis, ~w(HGETALL features:feat-store-6:feature)) ==
-        ["description", "a-feat", "expire_period", "30"]
+        ["expire_period", "30", "description", "a-feat"]
     end
 
     test "sets only the given values when they're not set", %{redis: redis} do

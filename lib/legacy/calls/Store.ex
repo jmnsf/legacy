@@ -44,8 +44,9 @@ defmodule Legacy.Calls.Store do
     {:ok, redis} = redis_connection()
     key = call_key feature_name, timestamp, :day
 
-    now_new = Redix.command! redis, ~w(INCRBY #{key}:new #{new})
-    now_old = Redix.command! redis, ~w(INCRBY #{key}:old #{old})
+    # TODO: use a single pipeline for this
+    now_new = expired_write redis, "#{key}:new", ~w(INCRBY #{key}:new #{new})
+    now_old = expired_write redis, "#{key}:old", ~w(INCRBY #{key}:old #{old})
 
     {now_new, now_old}
   end
@@ -56,10 +57,8 @@ defmodule Legacy.Calls.Store do
   """
   @spec incr_old(String.t, non_neg_integer, integer) :: integer
   def incr_old(feature_name, timestamp, count \\ 1) do
-    {:ok, redis} = redis_connection()
     key = call_key feature_name, timestamp, :day
-
-    Redix.command! redis, ~w(INCRBY #{key}:old #{count})
+    expired_write key, ~w(INCRBY #{key}:old #{count})
   end
 
   @doc """
@@ -68,10 +67,8 @@ defmodule Legacy.Calls.Store do
   """
   @spec incr_new(String.t, non_neg_integer, integer) :: integer
   def incr_new(feature_name, timestamp, count \\ 1) do
-    {:ok, redis} = redis_connection()
     key = call_key feature_name, timestamp, :day
-
-    Redix.command! redis, ~w(INCRBY #{key}:new #{count})
+    expired_write key, ~w(INCRBY #{key}:new #{count})
   end
 
   @doc """

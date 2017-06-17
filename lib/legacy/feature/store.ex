@@ -25,13 +25,11 @@ defmodule Legacy.Feature.Store do
   @spec set_missing(String.t, [{String.t, any}]) :: [String.t]
   def set_missing(_name, []), do: nil
   def set_missing(name, values) do
-    {:ok, redis} = redis_connection()
     redis_key = feature_key name
 
-    Enum.map values, fn { key, value } ->
-      # TODO: optimize this into pipeline
-      Redix.command! redis, ["HSETNX", redis_key, key, value]
-    end
+    Stream.map(values, fn {key, value} -> ["HSETNX", redis_key, key, value] end)
+    |> Enum.reduce([], fn command, commands -> [command | commands] end)
+    |> (&expired_write(redis_key, &1)).() # ew
   end
 
   @doc """
@@ -80,12 +78,24 @@ defmodule Legacy.Feature.Store do
     old = old || 0
     ts = DateTime.to_iso8601(ts && elem(DateTime.from_unix(ts), 1) || DateTime.utc_now)
 
-    {:ok, redis} = redis_connection()
+    commands = [
+      ~w(HSETNX #{feature_stats_key(name)} first_call_at #{ts}),
+      ~w(HSET #{feature_stats_key(name)} last_call_at #{ts})
+    ]
 
-    Redix.command! redis, ~w(HSETNX #{feature_stats_key(name)} first_call_at #{ts})
-    Redix.command! redis, ~w(HSET #{feature_stats_key(name)} last_call_at #{ts})
-    new > 0 && Redix.command! redis, ~w(HINCRBY #{feature_stats_key(name)} total_new #{new})
-    old > 0 && Redix.command! redis, ~w(HINCRBY #{feature_stats_key(name)} total_old #{old})
+    commands = if new > 0 do
+      [~w(HINCRBY #{feature_stats_key(name)} total_new #{new}) | commands]
+    else
+      commands
+    end
+
+    commands = if old > 0 do
+      [~w(HINCRBY #{feature_stats_key(name)} total_old #{old}) | commands]
+    else
+      commands
+    end
+
+    expired_write(feature_stats_key(name), commands)
   end
 
   @doc """
@@ -104,9 +114,7 @@ defmodule Legacy.Feature.Store do
     {:ok, redis} = redis_connection()
 
     params = Enum.flat_map(attrs, fn { key, value } -> [key, value] end)
-    command = ["HMSET" | [feature_key(name) | params]]
-
-    Redix.command! redis, command
+    expired_write(redis, feature_key(name), ["HMSET" | [feature_key(name) | params]])
   end
 
   defp del_keys(_, []), do: :ok

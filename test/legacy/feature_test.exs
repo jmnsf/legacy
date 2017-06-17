@@ -6,7 +6,7 @@ defmodule Legacy.FeatureTest do
       Legacy.Feature.init "ft-feat-1"
 
       assert Redix.command!(redis, ~w(HKEYS features:ft-feat-1:feature)) ==
-        ["created_at", "description", "expire_period", "rate_threshold", "updated_at"]
+        ["updated_at", "rate_threshold", "expire_period", "description", "created_at"]
       assert Redix.command!(redis, ~w(HMGET features:ft-feat-1:feature description expire_period rate_threshold)) ==
         ["ft-feat-1", "30", "0.05"]
 
