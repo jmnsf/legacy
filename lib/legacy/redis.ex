@@ -11,10 +11,6 @@ defmodule Legacy.Redis do
   def int_or_0(nil), do: 0
   def int_or_0(val), do: String.to_integer val
 
-  def expire(redis, key) do
-    Redix.command! redis, ~w(EXPIRE #{key} )
-  end
-
   @doc """
   Helper for both pipelining & expiring keys on write ops.
 
@@ -38,5 +34,54 @@ defmodule Legacy.Redis do
   def expired_write(key, commands) do
     {:ok, redis} = redis_connection()
     expired_write(redis, key, commands)
+  end
+
+  @doc """
+  Quick run a pipeline of commands
+  """
+  def redis([[_ | _] | _] = commands) do
+    {:ok, redis} = redis_connection()
+    Redix.pipeline! redis, commands
+  end
+
+  @doc """
+  Quick run a redis command
+  """
+  def redis(command) do
+    {:ok, redis} = redis_connection()
+    Redix.command! redis, command
+  end
+
+  @doc """
+  Helpers for building Redis commands from keys & args in different data
+  structures.
+  """
+  @spec make_cmd(atom, String.t, any) :: [String.t]
+  def make_cmd(:hmset, key, attrs) when is_map(attrs), do: make_cmd(:hmset, key, Map.to_list(attrs))
+  def make_cmd(:hmset, key, attrs) do
+    params = Stream.filter(attrs, fn { key, _ } -> key != :__struct__ end)
+    |> Enum.flat_map(fn { key, value } -> [key, value] end)
+
+    ["HMSET" | [key | params]]
+  end
+
+  @doc """
+  Gets an HashMap from redis as an Elixir map, optionally fixing the types of
+  the retrieved values.
+  """
+  def redis_map(key, value_fixer \\ nil) do
+    redis(~w(HGETALL #{key}))
+    |> Stream.chunk(2)
+    |> Enum.reduce(%{}, fn [key, value], map ->
+      atom_key = String.to_atom key
+
+      value = if value_fixer do
+        value_fixer.(atom_key, value)
+      else
+        value
+      end
+
+      Map.put map, atom_key, value
+    end)
   end
 end

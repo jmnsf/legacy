@@ -9,6 +9,7 @@ defmodule Legacy.Api do
 
   resources :features, do: mount Legacy.Api.Features
   resources :calls, do: mount Legacy.Api.Calls
+  resources :users, do: mount Legacy.Api.Users
 
   rescue_from Maru.Exceptions.NotFound do
     conn

@@ -1,4 +1,4 @@
-defmodule Legacy.Feature.Store.StoreTest do
+defmodule Legacy.Feature.StoreTest do
   use Legacy.RedisCase, async: true
   import Legacy.ExtraAsserts
 

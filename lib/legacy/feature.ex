@@ -14,7 +14,6 @@ defmodule Legacy.Feature do
   * notified_at: When this feature triggered a rate notification, if it did.
   * created_at: When the feature was first seen.
   * updated_at: Last time the feature data was edited.
-
   """
 
   defstruct [

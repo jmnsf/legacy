@@ -113,8 +113,8 @@ defmodule Legacy.Feature.Store do
   defp set_attributes(name, attrs) do
     {:ok, redis} = redis_connection()
 
-    params = Enum.flat_map(attrs, fn { key, value } -> [key, value] end)
-    expired_write(redis, feature_key(name), ["HMSET" | [feature_key(name) | params]])
+    hmset = make_cmd(:hmset, feature_key(name), attrs)
+    expired_write(redis, feature_key(name), hmset)
   end
 
   defp del_keys(_, []), do: :ok
@@ -130,16 +130,11 @@ defmodule Legacy.Feature.Store do
   defp feature_stats_key(name), do: "#{base_feature_key(name)}:stats"
 
   defp get_all_fixed(key) do
-    {:ok, redis} = redis_connection()
+    attrs = redis_map(key, fn key, value -> fix_value_type(key, value) end)
 
-    case Redix.command! redis, ~w(HGETALL #{key}) do
-      [] -> nil
-      values ->
-        Stream.chunk(values, 2)
-        |> Enum.reduce(%{}, fn [key, value], map ->
-          atom_key = String.to_atom key
-          Map.put(map, atom_key, fix_value_type(atom_key, value))
-        end)
+    case map_size(attrs) do
+      0 -> nil
+      _ -> attrs
     end
   end
 
