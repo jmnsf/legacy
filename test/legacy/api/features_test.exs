@@ -25,13 +25,17 @@ defmodule Legacy.Api.FeaturesTest do
 
   @moduletag :api
   describe "GET /features/:feature_name" do
-    test "returns 404 Not Found when there is no feature with such name" do
-      assert_raise Maru.Exceptions.NotFound, fn -> get("/no-name") end
+    test "requires authorization" do
+      assert_raise Maru.Exceptions.Unauthorized, fn -> get("/feature") end
     end
 
-    test "returns the feature as JSON when it does exist" do
+    test "returns 404 Not Found when there is no feature with such name", %{user: user} do
+      assert_raise Maru.Exceptions.NotFound, fn -> get_auth("/no-name", user) end
+    end
+
+    test "returns the feature as JSON when it does exist", %{user: user} do
       Legacy.Feature.init "ft-api-feat-1"
-      response = get("/ft-api-feat-1")
+      response = get_auth("/ft-api-feat-1", user)
 
       assert response.status == 200
 

@@ -13,13 +13,13 @@ defmodule Legacy.Api.Features do
     end
   end
 
-  desc "creates a new feature"
+  plug Legacy.Api.Middleware.Authorize
 
+  desc "creates a new feature"
   params do
     use :feature_name
     use :feature_attributes
   end
-
   post do
     if Legacy.Feature.Store.exists(params[:feature_name]) do
       conn
@@ -39,11 +39,9 @@ defmodule Legacy.Api.Features do
 
   route_param :feature_name do
     desc "gets the feature with the given name"
-
     params do
       use :feature_name
     end
-
     get do
       feature = Legacy.Feature.Store.show params[:feature_name]
 
@@ -54,12 +52,10 @@ defmodule Legacy.Api.Features do
     end
 
     desc "updates an existing feature"
-
     params do
       use :feature_name
       use :feature_attributes
     end
-
     patch do
       case Legacy.Feature.Store.exists(params[:feature_name]) do
         false -> put_status conn, 404
@@ -77,12 +73,10 @@ defmodule Legacy.Api.Features do
 
     namespace :breakdown do
       desc "returns a breakdown analysis of this feature"
-
       params do
         use :feature_name
         use :timeseries_range
       end
-
       get do
         case Legacy.Feature.Store.exists(params[:feature_name]) do
           false -> put_status conn, 404

@@ -9,7 +9,11 @@ defmodule Legacy.ExtendedMaru do
   defmacro __using__(opts) do
     quote do
       use Maru.Test, unquote(opts)
+      setup_all do
+        {:ok, user: Legacy.User.register()}
+      end
       unquote(add_json_body())
+      unquote(add_authorized_requests())
     end
   end
 
@@ -50,6 +54,19 @@ defmodule Legacy.ExtendedMaru do
       def add_content(conn, body, "json") do
         Plug.Conn.put_req_header(conn, "content-type", "application/json")
         |> put_body_or_params(Poison.encode! body)
+      end
+    end
+  end
+
+  defp add_authorized_requests() do
+    for method <- [:get, :post, :put, :patch, :delete, :head, :options] do
+      quote do
+        def unquote(:"#{method}_auth")(url, user) do
+          IO.puts("authorizing user #{inspect user}")
+          build_conn()
+          |> put_req_header("authorization", "Bearer #{user.api_key}")
+          |> unquote(method)(url)
+        end
       end
     end
   end

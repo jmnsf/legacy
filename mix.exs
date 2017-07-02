@@ -40,7 +40,7 @@ defmodule Legacy.Mixfile do
   defp deps do
     [
       {:redix, "~> 0.5.1"},
-      {:maru, "~> 0.11"},
+      {:maru, "~> 0.11.4"},
       {:httpoison, "~> 0.11.1"},
       {:bamboo, "~> 0.8"},
       {:mustache, "~> 0.0.2"},

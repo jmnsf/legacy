@@ -2,7 +2,6 @@ defmodule Legacy.Api.Users do
   use Maru.Router
 
   desc "registers a new user"
-
   post do
     new_user = Legacy.User.register()
 
