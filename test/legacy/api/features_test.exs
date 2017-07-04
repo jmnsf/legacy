@@ -2,7 +2,7 @@ defmodule Legacy.Api.FeaturesTest do
   import Legacy.ExtraAsserts
 
   use Legacy.RedisCase, async: true
-  use Legacy.ExtendedMaru, for: Legacy.Api.Features
+  use Legacy.ExtendedMaru
 
   setup_all do
     now = DateTime.to_unix DateTime.utc_now
@@ -26,16 +26,16 @@ defmodule Legacy.Api.FeaturesTest do
   @moduletag :api
   describe "GET /features/:feature_name" do
     test "requires authorization" do
-      assert_raise Maru.Exceptions.Unauthorized, fn -> get("/feature") end
+      assert 401 = get("/features/feature").status
     end
 
     test "returns 404 Not Found when there is no feature with such name", %{user: user} do
-      assert_raise Maru.Exceptions.NotFound, fn -> get_auth("/no-name", user) end
+      assert 404 = get_auth("/features/no-name", user).status
     end
 
     test "returns the feature as JSON when it does exist", %{user: user} do
       Legacy.Feature.init "ft-api-feat-1"
-      response = get_auth("/ft-api-feat-1", user)
+      response = get_auth("/features/ft-api-feat-1", user)
 
       assert response.status == 200
 
@@ -49,13 +49,20 @@ defmodule Legacy.Api.FeaturesTest do
   end
 
   describe "GET /features/:feature_name/breakdown" do
-    test "returns 404 Not Found for a non-existing feature" do
-      assert_raise Maru.Exceptions.NotFound, fn -> get("/no-name/breakdown") end
+    test "returns 404 Not Found for a non-existing feature", %{user: user} do
+      assert 404 =
+        build_conn()
+        |> assign(:user, user)
+        |> get("/features/no-name/breakdown")
+        |> Map.get(:status)
     end
 
-    test "returns all empty arrays if there is no data" do
+    test "returns all empty arrays if there is no data", %{user: user} do
       Legacy.Feature.init "ft-api-feat-8"
-      response = get "/ft-api-feat-8/breakdown"
+      response =
+        build_conn()
+        |> assign(:user, user)
+        |> get("/features/ft-api-feat-8/breakdown")
       json = json_response response
 
       assert response.status == 200
@@ -66,15 +73,25 @@ defmodule Legacy.Api.FeaturesTest do
       assert json["data"]["threshold_ts"] == nil
     end
 
-    test "returns a timeseries as JSON for the last week's timestamps", %{now: now} do
-      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+    test "returns a timeseries as JSON for the last week's timestamps", %{now: now, user: user} do
+      json =
+        build_conn()
+        |> put_body_or_params(%{from: now})
+        |> assign(:user, user)
+        |> get("/features/ft-api-feat-9/breakdown")
+        |> json_response
 
       assert json["data"]["ts"] ==
         for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)
     end
 
-    test "returns last week's daily old/new rate, in weighted average", %{now: now} do
-      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+    test "returns last week's daily old/new rate, in weighted average", %{now: now, user: user} do
+      json =
+        build_conn()
+        |> put_body_or_params(%{from: now})
+        |> assign(:user, user)
+        |> get("/features/ft-api-feat-9/breakdown")
+        |> json_response
 
       assert json["data"]["rate"] ==
         Legacy.Analysis.moving_average(
@@ -84,8 +101,13 @@ defmodule Legacy.Api.FeaturesTest do
         )
     end
 
-    test "returns a rendered trendline for last week's rate", %{now: now} do
-      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+    test "returns a rendered trendline for last week's rate", %{now: now, user: user} do
+      json =
+        build_conn()
+        |> assign(:user, user)
+        |> put_body_or_params(%{from: now})
+        |> get("/features/ft-api-feat-9/breakdown")
+        |> json_response()
 
       ts = for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)
       mv_avg = Legacy.Analysis.moving_average(
@@ -99,8 +121,13 @@ defmodule Legacy.Api.FeaturesTest do
         Enum.map(ts, &Legacy.Analysis.Regression.predict(model, &1))
     end
 
-    test "returns a predicted timestamp for the threshold to be met", %{now: now} do
-      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+    test "returns a predicted timestamp for the threshold to be met", %{user: user, now: now} do
+      json =
+        build_conn()
+        |> assign(:user, user)
+        |> put_body_or_params(%{from: now})
+        |> get("/features/ft-api-feat-9/breakdown")
+        |> json_response()
 
       model = Legacy.Analysis.simple_regression_model(
         (for n <- (6..0), do: Utils.GranularTime.base_ts(now - n * 86400)),
@@ -116,8 +143,13 @@ defmodule Legacy.Api.FeaturesTest do
       assert json["data"]["threshold_ts"] > List.first(json["data"]["ts"])
     end
 
-    test "returns the feature call stats", %{now: now} do
-      json = json_response get "/ft-api-feat-9/breakdown?from=#{now}"
+    test "returns the feature call stats", %{user: user, now: now} do
+      json =
+        build_conn()
+        |> assign(:user, user)
+        |> put_body_or_params(%{from: now})
+        |> get("/features/ft-api-feat-9/breakdown")
+        |>json_response()
 
       assert json["data"]["stats"]
       assert json["data"]["stats"]["total_new"] == 35
@@ -129,17 +161,24 @@ defmodule Legacy.Api.FeaturesTest do
   end
 
   describe "POST /features" do
-    test "errors out if a feature exists with the given name" do
+    test "errors out if a feature exists with the given name", %{user: user} do
       Legacy.Feature.init "ft-api-feat-2"
 
-      res = post_body "/", %{feature_name: "ft-api-feat-2"}
+      res =
+        build_conn()
+        |> put_body_or_params(%{feature_name: "ft-api-feat-2"})
+        |> assign(:user, user)
+        |> post("/features")
 
       assert res.status == 409
       assert json_response(res) == %{"errors" => ["A Feature with this name already exists."]}
     end
 
-    test "creates a new feature with the given name & settings" do
-      post_body "/", %{feature_name: 'ft-api-feat-3', expire_period: 45}
+    test "creates a new feature with the given name & settings", %{user: user} do
+      build_conn()
+      |> assign(:user, user)
+      |> put_body_or_params(%{feature_name: 'ft-api-feat-3', expire_period: 45})
+      |> post("/features")
 
       feature = Legacy.Feature.Store.show 'ft-api-feat-3'
       assert feature
@@ -149,8 +188,12 @@ defmodule Legacy.Api.FeaturesTest do
       assert_date_approx feature.updated_at, DateTime.utc_now
     end
 
-    test "returns the new feature as JSON" do
-      res = post_body "/", %{feature_name: "ft-api-feat-4"}
+    test "returns the new feature as JSON", %{user: user} do
+      res =
+        build_conn()
+        |> put_body_or_params(%{feature_name: "ft-api-feat-4"})
+        |> assign(:user, user)
+        |> post("/features")
       json = json_response res
 
       assert res.status == 201
@@ -166,14 +209,21 @@ defmodule Legacy.Api.FeaturesTest do
   end
 
   describe "PATCH /features/:feature_name" do
-    test "returns 404 Not Found when there is no feature with such name" do
-      assert_raise Maru.Exceptions.NotFound, fn -> patch_body("/no-name", %{}) end
+    test "returns 404 Not Found when there is no feature with such name", %{user: user} do
+      assert 404 =
+        build_conn()
+        |> assign(:user, user)
+        |> patch("/features/no-noname")
+        |> Map.get(:status)
     end
 
-    test "updates the existing feature with the given data" do
+    test "updates the existing feature with the given data", %{user: user} do
       Legacy.Feature.init "ft-api-feat-5"
 
-      patch_body "/ft-api-feat-5", %{alert_email: 'an@email.com', expire_period: 45}
+      build_conn()
+      |> assign(:user, user)
+      |> put_body_or_params(%{alert_email: 'an@email.com', expire_period: 45})
+      |> patch("/features/ft-api-feat-5")
 
       feature = Legacy.Feature.Store.show "ft-api-feat-5"
       assert feature.alert_email == "an@email.com"
@@ -181,10 +231,15 @@ defmodule Legacy.Api.FeaturesTest do
       assert feature.description == "ft-api-feat-5"
     end
 
-    test "returns the updated feature as JSON" do
+    test "returns the updated feature as JSON", %{user: user} do
       Legacy.Feature.init "ft-api-feat-6"
 
-      res = patch_body "/ft-api-feat-6", %{alert_endpoint: 'https://endpoint.com/legacy', rate_threshold: 0.1}
+      res =
+        build_conn()
+        |> assign(:user, user)
+        |> put_body_or_params(%{alert_endpoint: 'https://endpoint.com/legacy', rate_threshold: 0.1})
+        |> patch("/features/ft-api-feat-6")
+
       json = json_response res
 
       assert res.status == 200
@@ -200,12 +255,16 @@ defmodule Legacy.Api.FeaturesTest do
       assert_date_approx feature["updated_at"], DateTime.utc_now
     end
 
-    test "validates the passed parameters" do
+    test "validates the passed parameters", %{user: user} do
       Legacy.Feature.init "ft-api-feat-7"
 
-      assert_raise Maru.Exceptions.Validation, fn ->
-        patch_body "/ft-api-feat-7", %{rate_threshold: 1.2}
-      end
+      assert \
+        build_conn()
+        |> assign(:user, user)
+        |> put_body_or_params(%{rate_threshold: 1.2})
+        |> patch("/features/ft-api-feat-7")
+        |> Map.get(:resp_body)
+        =~ ~r/rate_threshold/
     end
   end
 end

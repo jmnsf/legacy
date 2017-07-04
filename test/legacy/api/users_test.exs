@@ -5,7 +5,7 @@ defmodule Legacy.Api.UsersTest do
   @moduletag :api
   describe "POST /users" do
     test "returns 201 and the created user" do
-      res = post("/")
+      res = post("/users")
 
       assert res.status == 201
 
