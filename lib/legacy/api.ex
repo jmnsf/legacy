@@ -40,7 +40,7 @@ defmodule Legacy.Api do
     conn
     |> put_status(400)
     |> json(%{errors: [
-      "Parameter `#{err.param}` is invalid. Expected `#{inspect err.option}`, got `#{err.value}`"
+      "Parameter `#{inspect err.param}` is invalid. Expected `#{inspect err.option}`, got `#{inspect err.value}`"
     ]})
   end
 
