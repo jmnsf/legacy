@@ -26,16 +26,17 @@ defmodule Legacy.Api.FeaturesTest do
   @moduletag :api
   describe "GET /features/:feature_name" do
     test "requires authorization" do
-      assert 401 = get("/features/feature").status
+      assert get("/features/feature").status == 401
     end
 
     test "returns 404 Not Found when there is no feature with such name", %{user: user} do
-      assert 404 = get_auth("/features/no-name", user).status
+      res = auth_conn(user) |> get("/features/no-name")
+      assert res.status == 404
     end
 
     test "returns the feature as JSON when it does exist", %{user: user} do
       Legacy.Feature.init "ft-api-feat-1"
-      response = get_auth("/features/ft-api-feat-1", user)
+      response = auth_conn(user) |> get("/features/ft-api-feat-1")
 
       assert response.status == 200
 
@@ -49,10 +50,13 @@ defmodule Legacy.Api.FeaturesTest do
   end
 
   describe "GET /features/:feature_name/breakdown" do
+    test "requires authorization" do
+      assert get("/features/no-name/breakdown").status == 401
+    end
+
     test "returns 404 Not Found for a non-existing feature", %{user: user} do
       assert 404 =
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> get("/features/no-name/breakdown")
         |> Map.get(:status)
     end
@@ -60,8 +64,7 @@ defmodule Legacy.Api.FeaturesTest do
     test "returns all empty arrays if there is no data", %{user: user} do
       Legacy.Feature.init "ft-api-feat-8"
       response =
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> get("/features/ft-api-feat-8/breakdown")
       json = json_response response
 
@@ -75,9 +78,8 @@ defmodule Legacy.Api.FeaturesTest do
 
     test "returns a timeseries as JSON for the last week's timestamps", %{now: now, user: user} do
       json =
-        build_conn()
+        auth_conn(user)
         |> put_body_or_params(%{from: now})
-        |> assign(:user, user)
         |> get("/features/ft-api-feat-9/breakdown")
         |> json_response
 
@@ -87,9 +89,8 @@ defmodule Legacy.Api.FeaturesTest do
 
     test "returns last week's daily old/new rate, in weighted average", %{now: now, user: user} do
       json =
-        build_conn()
+        auth_conn(user)
         |> put_body_or_params(%{from: now})
-        |> assign(:user, user)
         |> get("/features/ft-api-feat-9/breakdown")
         |> json_response
 
@@ -103,8 +104,7 @@ defmodule Legacy.Api.FeaturesTest do
 
     test "returns a rendered trendline for last week's rate", %{now: now, user: user} do
       json =
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> put_body_or_params(%{from: now})
         |> get("/features/ft-api-feat-9/breakdown")
         |> json_response()
@@ -123,8 +123,7 @@ defmodule Legacy.Api.FeaturesTest do
 
     test "returns a predicted timestamp for the threshold to be met", %{user: user, now: now} do
       json =
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> put_body_or_params(%{from: now})
         |> get("/features/ft-api-feat-9/breakdown")
         |> json_response()
@@ -145,8 +144,7 @@ defmodule Legacy.Api.FeaturesTest do
 
     test "returns the feature call stats", %{user: user, now: now} do
       json =
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> put_body_or_params(%{from: now})
         |> get("/features/ft-api-feat-9/breakdown")
         |>json_response()
@@ -161,13 +159,16 @@ defmodule Legacy.Api.FeaturesTest do
   end
 
   describe "POST /features" do
+    test "requires authorization" do
+      assert post("/features").status == 401
+    end
+
     test "errors out if a feature exists with the given name", %{user: user} do
       Legacy.Feature.init "ft-api-feat-2"
 
       res =
-        build_conn()
+        auth_conn(user)
         |> put_body_or_params(%{feature_name: "ft-api-feat-2"})
-        |> assign(:user, user)
         |> post("/features")
 
       assert res.status == 409
@@ -175,8 +176,7 @@ defmodule Legacy.Api.FeaturesTest do
     end
 
     test "creates a new feature with the given name & settings", %{user: user} do
-      build_conn()
-      |> assign(:user, user)
+      auth_conn(user)
       |> put_body_or_params(%{feature_name: 'ft-api-feat-3', expire_period: 45})
       |> post("/features")
 
@@ -190,9 +190,8 @@ defmodule Legacy.Api.FeaturesTest do
 
     test "returns the new feature as JSON", %{user: user} do
       res =
-        build_conn()
+        auth_conn(user)
         |> put_body_or_params(%{feature_name: "ft-api-feat-4"})
-        |> assign(:user, user)
         |> post("/features")
       json = json_response res
 
@@ -209,10 +208,13 @@ defmodule Legacy.Api.FeaturesTest do
   end
 
   describe "PATCH /features/:feature_name" do
+    test "requires authorization" do
+      assert patch("/features/no-name").status == 401
+    end
+
     test "returns 404 Not Found when there is no feature with such name", %{user: user} do
       assert 404 =
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> patch("/features/no-noname")
         |> Map.get(:status)
     end
@@ -220,8 +222,7 @@ defmodule Legacy.Api.FeaturesTest do
     test "updates the existing feature with the given data", %{user: user} do
       Legacy.Feature.init "ft-api-feat-5"
 
-      build_conn()
-      |> assign(:user, user)
+      auth_conn(user)
       |> put_body_or_params(%{alert_email: 'an@email.com', expire_period: 45})
       |> patch("/features/ft-api-feat-5")
 
@@ -235,8 +236,7 @@ defmodule Legacy.Api.FeaturesTest do
       Legacy.Feature.init "ft-api-feat-6"
 
       res =
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> put_body_or_params(%{alert_endpoint: 'https://endpoint.com/legacy', rate_threshold: 0.1})
         |> patch("/features/ft-api-feat-6")
 
@@ -259,8 +259,7 @@ defmodule Legacy.Api.FeaturesTest do
       Legacy.Feature.init "ft-api-feat-7"
 
       assert \
-        build_conn()
-        |> assign(:user, user)
+        auth_conn(user)
         |> put_body_or_params(%{rate_threshold: 1.2})
         |> patch("/features/ft-api-feat-7")
         |> Map.get(:resp_body)

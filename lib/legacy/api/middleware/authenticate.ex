@@ -2,7 +2,6 @@ defmodule Legacy.Api.Middleware.Authenticate do
   use Maru.Middleware
 
   def call(conn, _opts) do
-    IO.puts("in authenticate")
     with [authorization | _] <- get_req_header(conn, "authorization"),
          ["Bearer", api_key] <- String.split(authorization)
     do
