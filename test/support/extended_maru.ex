@@ -9,45 +9,23 @@ defmodule Legacy.ExtendedMaru do
   defmacro __using__(opts) do
     quote do
       use Maru.Test, unquote(opts)
-      unquote(add_json_body())
-    end
-  end
-
-  defp add_json_body() do
-    # TODO: DRY this by iterating patch, put, post
-    quote do
-      @doc """
-      Makes a POST request with the given body. Correctly encodes the body in the
-      requested format and sets Content-Type headers.
-
-      ## Parameters
-
-        - url: The URL for the POST request
-        - body: The body to send on the request
-        - opts: For customizing function behaviour:
-          - format: What format to send the body in. Defaults to 'json'.
-
-      """
-      @spec post_body(String.t, map(), keyword(String.t)) :: Plug.Conn.t
-      def post_body(url, body, opts \\ []) do
-        sendable_body(body, opts)
-        |> post(url)
+      setup_all do
+        {:ok, user: Legacy.User.register()}
       end
 
-      @spec patch_body(String.t, map(), keyword(String.t)) :: Plug.Conn.t
-      def patch_body(url, body, opts \\ []) do
-        sendable_body(body, opts)
-        |> patch(url)
-      end
+      def body_conn(body, opts \\ []), do: build_conn() |> add_body(body, opts)
 
-      def sendable_body(body, opts) do
+      def add_body(conn, body, opts \\ []) do
         format = opts[:format] || "json"
-
-        build_conn()
-        |> add_content(body, format)
+        add_content(conn, body, format)
       end
 
-      def add_content(conn, body, "json") do
+      def auth_conn(user) do
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{user.api_key}")
+      end
+
+      defp add_content(conn, body, "json") do
         Plug.Conn.put_req_header(conn, "content-type", "application/json")
         |> put_body_or_params(Poison.encode! body)
       end

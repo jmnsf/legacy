@@ -7,13 +7,22 @@ defmodule Legacy.Api do
     json_decoder: Poison,
     parsers: [:json] # add here :urlencoded or :multipart as needed
 
+  plug Legacy.Api.Middleware.Authenticate
+
   resources :features, do: mount Legacy.Api.Features
   resources :calls, do: mount Legacy.Api.Calls
+  resources :users, do: mount Legacy.Api.Users
 
   rescue_from Maru.Exceptions.NotFound do
     conn
     |> put_status(404)
     |> text("Not Found")
+  end
+
+  rescue_from Maru.Exceptions.MethodNotAllowed do
+    conn
+    |> put_status(404)
+    |> json(%{errors: ["Not Found"]})
   end
 
   rescue_from Maru.Exceptions.InvalidFormat, as: err do
@@ -31,7 +40,7 @@ defmodule Legacy.Api do
     conn
     |> put_status(400)
     |> json(%{errors: [
-      "Parameter `#{err.param}` is invalid. Expected `#{inspect err.option}`, got `#{err.value}`"
+      "Parameter `#{inspect err.param}` is invalid. Expected `#{inspect err.option}`, got `#{inspect err.value}`"
     ]})
   end
 
@@ -39,6 +48,12 @@ defmodule Legacy.Api do
     conn
     |> put_status(400)
     |> json(%{errors: ["Error parsing request: #{inspect err}"]})
+  end
+
+  rescue_from Maru.Exceptions.Unauthorized do
+    conn
+    |> put_status(401)
+    |> json(%{errors: ["Unauthorized"]})
   end
 
   rescue_from :all, as: e do

@@ -6,8 +6,9 @@ defmodule Legacy.Api.Calls do
 
   helpers Legacy.Api.SharedParams
 
-  desc "registers feature calls"
+  plug Legacy.Api.Middleware.Authorize
 
+  desc "registers feature calls"
   params do
     use :feature_name
     requires :ts, type: Timestamp
@@ -15,7 +16,6 @@ defmodule Legacy.Api.Calls do
     optional :old, type: Integer
     at_least_one_of [:new, :old]
   end
-
   post do
     response = case Enum.map([:new, :old], &Map.has_key?(params, &1)) do
       [true, true] ->
@@ -36,13 +36,11 @@ defmodule Legacy.Api.Calls do
 
   namespace :aggregate do
     desc "aggregates and returns feature calls"
-
     params do
       use :feature_name
       use :timeseries_range
       optional :aggregation, type: Atom, values: [:sum, :avg]
     end
-
     get do
       response = Calls.aggregate(
         params[:feature_name],
